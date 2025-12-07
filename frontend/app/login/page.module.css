@@ -1,0 +1,223 @@
+.container {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: #AEB1FB;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: auto;
+  padding: 51px 49px;
+}
+
+/* Main container with gradient - matches Rectangle 79 */
+.mainContainer {
+  width: 1406px;
+  height: 1215px;
+  background: linear-gradient(180deg, rgba(34, 114, 167, 1) 0%, rgba(13, 44, 65, 1) 100%);
+  border-radius: 40px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding: 0;
+  margin: 0;
+}
+
+/* Left content section - positioned relative to main container */
+/* Figma positions are relative to frame (1504x1313), container is at (49, 51) */
+.leftContent {
+  position: absolute;
+  left: 54px; /* 103 - 49 (button x - container x) */
+  top: 252px; /* 303 - 51 (frame y - container y) */
+  width: 476px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 48px;
+  line-height: 1.2102272510528564em;
+  text-align: center;
+  color: #FFFFFF;
+  width: 331px;
+  height: 116px;
+  margin: 0;
+  margin-left: 45px; /* 148 - 103 (title x - button x) */
+  margin-bottom: 95px; /* 514 - 303 - 116 = 95 */
+}
+
+.continueSection {
+  position: relative;
+  width: 476px;
+  height: 35.1px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.continueText {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2102272510528564em;
+  text-align: center;
+  color: #FFFFFF;
+  width: auto;
+  height: 29px;
+  margin: 0;
+  position: absolute;
+  left: 62px; /* 116 - 54 (text x - leftContent x) */
+  top: 0;
+  white-space: nowrap;
+}
+
+.arrowIcon {
+  position: absolute;
+  left: 225px; /* 279 - 54 (arrow x - leftContent x) */
+  top: 0;
+  width: 35.1px;
+  height: 35.1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrowImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.emailPasswordButton {
+  width: 476px;
+  height: 71px;
+  background: rgba(60, 212, 187, 0.34);
+  border-radius: 50px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2102272510528564em;
+  text-align: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  margin-top: 15px; /* Gap between continueSection and button */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+  text-decoration: none;
+  position: relative;
+}
+
+.emailPasswordButton:hover {
+  background: rgba(60, 212, 187, 0.5);
+}
+
+/* Right side image - positioned relative to main container */
+/* Image is at frame x:632, container is at frame x:49, so relative to container: 632-49=583 */
+.rightImage {
+  position: absolute;
+  left: 583px; /* 632 - 49 (frame x - container x) */
+  top: 29px; /* 80 - 51 (frame y - container y) */
+  width: 796px;
+  height: 1157px;
+  border-radius: 86px;
+  overflow: hidden;
+  border: 1px solid #000000;
+}
+
+.backgroundImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Close button in top right of image with white shadow */
+.closeButton {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 20;
+  transition: background 0.3s ease;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.closeButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.closeButton svg path {
+  stroke: #000000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1600px) {
+  .mainContainer {
+    width: 90vw;
+    max-width: 1406px;
+    height: auto;
+    min-height: 1215px;
+    aspect-ratio: 1406 / 1215;
+  }
+
+  .rightImage {
+    width: 56.6%;
+    height: auto;
+    aspect-ratio: 796 / 1157;
+  }
+}
+
+@media (max-width: 1200px) {
+  .mainContainer {
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  .leftContent {
+    position: relative;
+    left: auto;
+    top: auto;
+    margin-bottom: 40px;
+  }
+
+  .rightImage {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: 100%;
+    max-width: 796px;
+    height: auto;
+  }
+
+  .closeButton {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    left: auto;
+  }
+}
+

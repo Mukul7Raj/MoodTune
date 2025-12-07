@@ -124,7 +124,7 @@ def get_spotify_login_url():
         "client_id": app.config["SPOTIFY_CLIENT_ID"],
         "response_type": "code",
         "redirect_uri": app.config["SPOTIFY_REDIRECT_URI"],
-        "scope": "user-read-email playlist-read-private",
+        "scope": "user-read-email playlist-read-private user-read-playback-state user-modify-playback-state streaming",
         "show_dialog": "true",
         "state": str(user_id)  # Pass user_id in state for verification
     }
@@ -143,7 +143,7 @@ def spotify_login():
         "client_id": app.config["SPOTIFY_CLIENT_ID"],
         "response_type": "code",
         "redirect_uri": app.config["SPOTIFY_REDIRECT_URI"],
-        "scope": "user-read-email playlist-read-private",
+        "scope": "user-read-email playlist-read-private user-read-playback-state user-modify-playback-state streaming",
         "show_dialog": "true",
         "state": str(user_id)  # Pass user_id in state for verification
     }
@@ -160,58 +160,116 @@ def spotify_callback():
     if not code:
         return jsonify({"error": "Missing code in callback"}), 400
 
-    # Redirect to frontend with the code - frontend will handle the connection
-    return redirect(f"http://localhost:3000?spotify_code={code}")
+    # Redirect to frontend home page with the code - frontend will handle the connection
+    return redirect(f"http://localhost:3000/home?spotify_code={code}")
 
 
 @app.route('/spotify/callback/complete', methods=['POST'])
 @jwt_required()
 def spotify_callback_complete():
     """Complete Spotify OAuth connection - called from callback HTML page"""
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    code = data.get("code")
-    
-    if not code:
-        return jsonify({"error": "Missing code"}), 400
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        code = data.get("code")
+        
+        if not code:
+            return jsonify({"error": "Missing code"}), 400
 
-    token_url = "https://accounts.spotify.com/api/token"
-    payload = {
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": app.config["SPOTIFY_REDIRECT_URI"],
-        "client_id": app.config["SPOTIFY_CLIENT_ID"],
-        "client_secret": app.config["SPOTIFY_CLIENT_SECRET"]
-    }
-    response = requests.post(token_url, data=payload, headers={"Content-Type": "application/x-www-form-urlencoded"})
-    token_data = response.json()
+        # Validate user exists
+        user = User.query.get(int(user_id))
+        if not user:
+            return jsonify({"error": "User not found"}), 404
 
-    access_token = token_data.get("access_token")
-    refresh_token = token_data.get("refresh_token")
+        # Check if Spotify credentials are configured
+        if not app.config.get("SPOTIFY_CLIENT_ID") or not app.config.get("SPOTIFY_CLIENT_SECRET"):
+            return jsonify({"error": "Spotify credentials not configured"}), 500
 
-    if not access_token:
-        return jsonify({"error": "Failed to get access token", "details": token_data}), 400
-
-    # Fetch Spotify user profile
-    user_info = requests.get("https://api.spotify.com/v1/me",
-                             headers={"Authorization": f"Bearer {access_token}"}).json()
-
-    user = User.query.get(int(user_id))
-    user.spotify_id = user_info.get("id")
-    user.spotify_display_name = user_info.get("display_name")
-    user.spotify_email = user_info.get("email")
-    user.spotify_access_token = access_token
-    user.spotify_refresh_token = refresh_token
-    db.session.commit()
-
-    return jsonify({
-        "message": "Spotify account linked successfully",
-        "spotify_user": {
-            "id": user.spotify_id,
-            "name": user.spotify_display_name,
-            "email": user.spotify_email
+        token_url = "https://accounts.spotify.com/api/token"
+        payload = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": app.config["SPOTIFY_REDIRECT_URI"],
+            "client_id": app.config["SPOTIFY_CLIENT_ID"],
+            "client_secret": app.config["SPOTIFY_CLIENT_SECRET"]
         }
-    }), 200
+        
+        response = requests.post(token_url, data=payload, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        
+        if response.status_code != 200:
+            error_data = response.json() if response.text else {}
+            print(f"Spotify token error: {response.status_code} - {error_data}")
+            return jsonify({
+                "error": "Failed to get access token from Spotify",
+                "details": error_data
+            }), 400
+
+        token_data = response.json()
+        access_token = token_data.get("access_token")
+        refresh_token = token_data.get("refresh_token")
+
+        if not access_token:
+            return jsonify({
+                "error": "Failed to get access token",
+                "details": token_data
+            }), 400
+
+        # Fetch Spotify user profile
+        user_info_response = requests.get(
+            "https://api.spotify.com/v1/me",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        
+        if user_info_response.status_code != 200:
+            error_data = user_info_response.json() if user_info_response.text else {}
+            print(f"Spotify user info error: {user_info_response.status_code} - {error_data}")
+            return jsonify({
+                "error": "Failed to fetch Spotify user profile",
+                "details": error_data
+            }), 400
+
+        user_info = user_info_response.json()
+
+        # Update user with Spotify info
+        try:
+            user.spotify_id = user_info.get("id")
+            user.spotify_display_name = user_info.get("display_name")
+            user.spotify_email = user_info.get("email")
+            user.spotify_access_token = access_token
+            if refresh_token:
+                user.spotify_refresh_token = refresh_token
+            
+            db.session.commit()
+        except Exception as db_error:
+            db.session.rollback()
+            print(f"Database error: {str(db_error)}")
+            # Check if it's a unique constraint violation
+            if "UNIQUE constraint" in str(db_error) or "unique" in str(db_error).lower():
+                return jsonify({
+                    "error": "Spotify account is already linked to another user"
+                }), 409
+            return jsonify({
+                "error": "Failed to save Spotify information",
+                "details": str(db_error)
+            }), 500
+
+        return jsonify({
+            "message": "Spotify account linked successfully",
+            "spotify_user": {
+                "id": user.spotify_id,
+                "name": user.spotify_display_name,
+                "email": user.spotify_email
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"Unexpected error in spotify_callback_complete: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
 
 
 @app.route('/spotify/refresh_token', methods=['POST'])
@@ -373,18 +431,34 @@ def get_recommendations():
         )
         if spotify_resp.status_code == 200:
             tracks = spotify_resp.json().get("tracks", {}).get("items", [])
-            return jsonify([
-                {
+            results = []
+            seen_track_ids = set()
+            
+            for t in tracks:
+                track_id = t.get("id")
+                # Skip duplicates
+                if track_id in seen_track_ids:
+                    continue
+                seen_track_ids.add(track_id)
+                
+                album = t.get("album", {})
+                images = album.get("images", [])
+                # Get the medium-sized image (index 1) or largest (index 0) if available
+                image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if len(images) > 0 else None)
+                
+                results.append({
+                    "id": track_id,
                     "title": t.get("name"),
                     "artist": ", ".join([a["name"] for a in t.get("artists", [])]),
-                    "album": t.get("album", {}).get("name"),
+                    "album": album.get("name"),
                     "spotifyUri": t.get("uri"),
+                    "imageUrl": image_url,
                     "source": "Spotify",
                     "emotion": query_emotion,
                     "language": language,
                     "wellbeing_mode": wellbeing_mode
-                } for t in tracks
-            ]), 200
+                })
+            return jsonify(results), 200
 
     # 🧠 JioSaavn fallback
     saavn_resp = requests.get(f"https://saavn.dev/api/search/songs?query={urllib.parse.quote(query)}&limit=10")
@@ -392,18 +466,38 @@ def get_recommendations():
         return jsonify({"error": "Failed to fetch recommendations"}), 502
 
     saavn_data = saavn_resp.json().get("data", [])
-    results = [
-        {
+    results = []
+    seen_song_ids = set()
+    
+    for s in saavn_data:
+        song_id = s.get("id")
+        # Skip duplicates
+        if song_id in seen_song_ids:
+            continue
+        seen_song_ids.add(song_id)
+        
+        # Get image from JioSaavn response
+        images = s.get("image", [])
+        image_url = None
+        if images:
+            # Get the highest quality image (usually the last one or largest)
+            if isinstance(images, list) and len(images) > 0:
+                image_url = images[-1].get("link") if isinstance(images[-1], dict) else images[-1]
+            elif isinstance(images, dict):
+                image_url = images.get("link")
+        
+        results.append({
+            "id": song_id,
             "title": s.get("name"),
             "artist": ", ".join(a["name"] for a in s.get("artists", [])),
             "album": s.get("album", {}).get("name"),
             "url": s.get("url"),
+            "imageUrl": image_url,
             "language": language,
             "emotion": query_emotion,
             "source": "JioSaavn",
             "wellbeing_mode": wellbeing_mode
-        } for s in saavn_data
-    ]
+        })
     return jsonify(results), 200
 
 
@@ -428,28 +522,49 @@ def search_music():
         )
         if resp.status_code == 200:
             data = resp.json()
-            return jsonify([
-                {
+            results = []
+            for t in data.get("tracks", {}).get("items", []):
+                album = t.get("album", {})
+                images = album.get("images", [])
+                # Get the medium-sized image (index 1) or largest (index 0) if available
+                image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if len(images) > 0 else None)
+                
+                results.append({
+                    "id": t.get("id"),
                     "title": t.get("name"),
                     "artist": ", ".join([a["name"] for a in t.get("artists", [])]),
-                    "album": t.get("album", {}).get("name"),
+                    "album": album.get("name"),
                     "spotifyUri": t.get("uri"),
+                    "imageUrl": image_url,
                     "source": "Spotify"
-                } for t in data.get("tracks", {}).get("items", [])
-            ]), 200
+                })
+            return jsonify(results), 200
 
     # JioSaavn fallback
     resp = requests.get(f"https://saavn.dev/api/search/songs?query={urllib.parse.quote(query)}&limit=10")
     data = resp.json().get("data", [])
-    return jsonify([
-        {
+    results = []
+    for s in data:
+        # Get image from JioSaavn response
+        images = s.get("image", [])
+        image_url = None
+        if images:
+            # Get the highest quality image (usually the last one or largest)
+            if isinstance(images, list) and len(images) > 0:
+                image_url = images[-1].get("link") if isinstance(images[-1], dict) else images[-1]
+            elif isinstance(images, dict):
+                image_url = images.get("link")
+        
+        results.append({
+            "id": s.get("id"),
             "title": s.get("name"),
             "artist": ", ".join(a["name"] for a in s.get("artists", [])),
             "album": s.get("album", {}).get("name"),
             "url": s.get("url"),
+            "imageUrl": image_url,
             "source": "JioSaavn"
-        } for s in data
-    ]), 200
+        })
+    return jsonify(results), 200
 
 # =========================================
 # Liked / Unliked songs & history endpoints
@@ -566,6 +681,291 @@ def get_all_playlists():
         {"playlistId": p.id, "name": p.name, "description": p.description, "createdAt": p.created_at.isoformat()}
         for p in playlists
     ]), 200
+
+
+@app.route('/api/featured-playlists', methods=['GET'])
+@jwt_required()
+def get_featured_playlists():
+    """Get featured playlists based on various genres"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    playlists_data = []
+    
+    # Define genres to fetch playlists for
+    genres = [
+        {"name": "Pop", "query": "pop hits"},
+        {"name": "Rock", "query": "rock classics"},
+        {"name": "Hip Hop", "query": "hip hop"},
+        {"name": "Electronic", "query": "electronic dance"},
+        {"name": "Jazz", "query": "jazz"},
+        {"name": "Classical", "query": "classical music"},
+        {"name": "Country", "query": "country music"},
+        {"name": "R&B", "query": "r&b soul"},
+        {"name": "Reggae", "query": "reggae"},
+        {"name": "Latin", "query": "latin music"},
+        {"name": "Bollywood", "query": "bollywood hits"},
+        {"name": "Indie", "query": "indie music"}
+    ]
+    
+    # If user has Spotify, fetch genre-based playlists
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            
+            # Fetch featured playlists from Spotify's browse API
+            spotify_resp = requests.get(
+                "https://api.spotify.com/v1/browse/featured-playlists?limit=50",
+                headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+            )
+            
+            if spotify_resp.status_code == 200:
+                featured = spotify_resp.json().get("playlists", {}).get("items", [])
+                for playlist in featured:
+                    images = playlist.get("images", [])
+                    image_url = images[0].get("url") if images else "/images/playlist-1.png"
+                    playlists_data.append({
+                        "id": playlist.get("id"),
+                        "title": playlist.get("name"),
+                        "subtitle": playlist.get("description", "")[:50] or f"{playlist.get('tracks', {}).get('total', 0)} tracks",
+                        "imageUrl": image_url,
+                        "spotifyId": playlist.get("id"),
+                        "genre": "Featured"
+                    })
+            
+            # Also search for genre-specific playlists
+            for genre in genres[:12]:  # Get playlists for all genres
+                try:
+                    genre_resp = requests.get(
+                        f"https://api.spotify.com/v1/search?q={urllib.parse.quote(genre['query'])}&type=playlist&limit=1",
+                        headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                    )
+                    if genre_resp.status_code == 200:
+                        playlists = genre_resp.json().get("playlists", {}).get("items", [])
+                        if playlists:
+                            playlist = playlists[0]
+                            images = playlist.get("images", [])
+                            image_url = images[0].get("url") if images else "/images/playlist-1.png"
+                            # Check if already added
+                            if not any(p.get("spotifyId") == playlist.get("id") for p in playlists_data):
+                                playlists_data.append({
+                                    "id": playlist.get("id"),
+                                    "title": playlist.get("name"),
+                                    "subtitle": f"{genre['name']} • {playlist.get('tracks', {}).get('total', 0)} tracks",
+                                    "imageUrl": image_url,
+                                    "spotifyId": playlist.get("id"),
+                                    "genre": genre["name"]
+                                })
+                except Exception as e:
+                    print(f"Error fetching {genre['name']} playlists: {e}")
+                    continue
+                    
+        except Exception as e:
+            print(f"Error fetching Spotify playlists: {e}")
+    
+    # If no playlists from Spotify, try JioSaavn or use defaults
+    if not playlists_data:
+        try:
+            # Try to get some playlists from JioSaavn
+            saavn_genres = ["bollywood", "hindi", "english", "punjabi"]
+            for genre in saavn_genres[:4]:
+                try:
+                    saavn_resp = requests.get(f"https://saavn.dev/api/search/playlists?query={urllib.parse.quote(genre)}&limit=1")
+                    if saavn_resp.status_code == 200:
+                        saavn_data = saavn_resp.json().get("data", {}).get("results", [])
+                        if saavn_data:
+                            playlist = saavn_data[0]
+                            images = playlist.get("image", [])
+                            image_url = images[0].get("link") if images else f"/images/playlist-{len(playlists_data) % 4 + 1}.png"
+                            playlists_data.append({
+                                "id": playlist.get("id"),
+                                "title": playlist.get("title", playlist.get("name", "Playlist")),
+                                "subtitle": f"{genre.capitalize()} • {playlist.get('songCount', 0)} songs",
+                                "imageUrl": image_url,
+                                "url": playlist.get("url"),
+                                "genre": genre.capitalize()
+                            })
+                except Exception as e:
+                    print(f"Error fetching JioSaavn {genre} playlist: {e}")
+                    continue
+        except Exception as e:
+            print(f"Error with JioSaavn fallback: {e}")
+    
+    # Final fallback to default genre-based playlists
+    if not playlists_data:
+        playlists_data = [
+            {"id": 1, "title": "Pop Hits 2024", "subtitle": "Top pop songs", "imageUrl": "/images/playlist-1.png", "genre": "Pop"},
+            {"id": 2, "title": "Rock Classics", "subtitle": "Best rock songs", "imageUrl": "/images/playlist-2.png", "genre": "Rock"},
+            {"id": 3, "title": "Hip Hop Essentials", "subtitle": "Hip hop favorites", "imageUrl": "/images/playlist-3.png", "genre": "Hip Hop"},
+            {"id": 4, "title": "Electronic Dance", "subtitle": "EDM hits", "imageUrl": "/images/playlist-4.png", "genre": "Electronic"},
+            {"id": 5, "title": "Jazz Collection", "subtitle": "Smooth jazz", "imageUrl": "/images/playlist-1.png", "genre": "Jazz"},
+            {"id": 6, "title": "Classical Masterpieces", "subtitle": "Classical music", "imageUrl": "/images/playlist-2.png", "genre": "Classical"},
+            {"id": 7, "title": "Bollywood Hits", "subtitle": "Top Hindi songs", "imageUrl": "/images/playlist-3.png", "genre": "Bollywood"},
+            {"id": 8, "title": "R&B Soul", "subtitle": "Soulful R&B", "imageUrl": "/images/playlist-4.png", "genre": "R&B"}
+        ]
+    
+    # Return all playlists (up to 50)
+    return jsonify(playlists_data[:50]), 200
+
+
+@app.route('/api/trending-songs', methods=['GET'])
+@jwt_required()
+def get_trending_songs():
+    """Get trending/popular songs"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    songs_data = []
+    
+    # Try Spotify first
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            # Get featured playlists or new releases
+            spotify_resp = requests.get(
+                "https://api.spotify.com/v1/browse/new-releases?limit=50",
+                headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+            )
+            if spotify_resp.status_code == 200:
+                albums = spotify_resp.json().get("albums", {}).get("items", [])
+                for album in albums:
+                    images = album.get("images", [])
+                    image_url = images[0].get("url") if images else "/images/song-1.png"
+                    artists = album.get("artists", [])
+                    artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                    album_id = album.get("id")
+                    
+                    # Use album URL directly (faster, and users can see all tracks in the album)
+                    spotify_uri = f"spotify:album:{album_id}"
+                    spotify_url = f"https://open.spotify.com/album/{album_id}"
+                    
+                    songs_data.append({
+                        "id": album_id,
+                        "title": album.get("name"),
+                        "subtitle": artist_name,
+                        "imageUrl": image_url,
+                        "album": album.get("name"),
+                        "artist": artist_name,
+                        "spotifyId": album_id,
+                        "spotifyUri": spotify_uri,
+                        "spotifyUrl": spotify_url
+                    })
+        except Exception as e:
+            print(f"Error fetching Spotify trending: {e}")
+    
+    # Fallback to JioSaavn or default
+    if not songs_data:
+        try:
+            saavn_resp = requests.get("https://saavn.dev/api/search/songs?query=trending&limit=50", timeout=5)
+            if saavn_resp.status_code == 200:
+                saavn_data = saavn_resp.json().get("data", [])
+                for song in saavn_data:
+                    images = song.get("image", [])
+                    image_url = None
+                    if images:
+                        if isinstance(images, list) and len(images) > 0:
+                            image_url = images[-1].get("link") if isinstance(images[-1], dict) else images[-1]
+                        elif isinstance(images, dict):
+                            image_url = images.get("link")
+                    
+                    if not image_url:
+                        image_url = "/images/song-1.png"
+                    
+                    artist_names = ", ".join([a.get("name", "") for a in song.get("artists", [])]) if song.get("artists") else "Unknown Artist"
+                    
+                    songs_data.append({
+                        "id": song.get("id"),
+                        "title": song.get("name", "Unknown Song"),
+                        "subtitle": artist_names,
+                        "imageUrl": image_url,
+                        "url": song.get("url"),
+                        "artist": artist_names,
+                        "album": song.get("album", {}).get("name", "") if isinstance(song.get("album"), dict) else ""
+                    })
+        except Exception as e:
+            print(f"Error fetching JioSaavn trending: {e}")
+    
+    # Default fallback
+    if not songs_data:
+        songs_data = [
+            {"id": 1, "title": "Blue Eyes", "subtitle": "Honey Singh", "imageUrl": "/images/song-1.png"},
+            {"id": 2, "title": "Photograph", "subtitle": "Ed Sheeran", "imageUrl": "/images/song-2.png"},
+            {"id": 3, "title": "Dil Jhoom", "subtitle": "Arijjit Singh", "imageUrl": "/images/song-3.png"},
+            {"id": 4, "title": "APT", "subtitle": "Rose & Bruno Mars", "imageUrl": "/images/song-4.png"}
+        ]
+    
+    return jsonify(songs_data), 200
+
+
+@app.route('/api/artists', methods=['GET'])
+@jwt_required()
+def get_artists():
+    """Get popular artists"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    artists_data = []
+    seen_artist_ids = set()  # Track unique artist IDs
+    seen_artist_names = set()  # Track unique artist names (case-insensitive)
+    
+    # Try Spotify first
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            # Search for popular artists
+            popular_artists = [
+                "Arijit Singh", "Sonu Nigam", "Shreya Ghoshal", "Atif Aslam", 
+                "Ed Sheeran", "Taylor Swift", "The Weeknd", "Drake", "Adele",
+                "Billie Eilish", "Post Malone", "Dua Lipa", "Justin Bieber",
+                "Ariana Grande", "Bruno Mars", "Coldplay", "Imagine Dragons",
+                "Eminem", "Kanye West", "Kendrick Lamar", "Lana Del Rey",
+                "Rihanna", "Beyoncé", "The Beatles", "Queen"
+            ]
+            for artist_name in popular_artists:
+                try:
+                    spotify_resp = requests.get(
+                        f"https://api.spotify.com/v1/search?q={urllib.parse.quote(artist_name)}&type=artist&limit=1",
+                        headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                    )
+                    if spotify_resp.status_code == 200:
+                        artists = spotify_resp.json().get("artists", {}).get("items", [])
+                        if artists:
+                            artist = artists[0]
+                            artist_id = artist.get("id")
+                            artist_name_lower = artist.get("name", "").lower().strip()
+                            
+                            # Skip if we've already seen this artist (by ID or name)
+                            if artist_id in seen_artist_ids or artist_name_lower in seen_artist_names:
+                                continue
+                            
+                            seen_artist_ids.add(artist_id)
+                            seen_artist_names.add(artist_name_lower)
+                            
+                            images = artist.get("images", [])
+                            image_url = images[0].get("url") if images else f"/images/artist-{artist_name.lower().replace(' ', '-')}-circle.png"
+                            artists_data.append({
+                                "id": artist_id,
+                                "title": artist.get("name"),
+                                "subtitle": f"{artist.get('followers', {}).get('total', 0)} followers",
+                                "imageUrl": image_url,
+                                "spotifyId": artist_id
+                            })
+                except Exception as e:
+                    print(f"Error fetching artist {artist_name}: {e}")
+                    continue
+        except Exception as e:
+            print(f"Error fetching Spotify artists: {e}")
+    
+    # Default fallback
+    if not artists_data:
+        artists_data = [
+            {"id": 1, "title": "Arijit Singh", "subtitle": "Bollywood Singer", "imageUrl": "/images/artist-arijit-circle.png"},
+            {"id": 2, "title": "Sonu Nigam", "subtitle": "Bollywood Singer", "imageUrl": "/images/artist-sonu-circle.png"},
+            {"id": 3, "title": "Shreya Ghoshal", "subtitle": "Bollywood Singer", "imageUrl": "/images/artist-shreya-circle.png"},
+            {"id": 4, "title": "Atif Aslam", "subtitle": "Bollywood Singer", "imageUrl": "/images/artist-atif-circle.png"}
+        ]
+    
+    return jsonify(artists_data), 200
 
 
 @app.route('/api/playlists', methods=['POST'])

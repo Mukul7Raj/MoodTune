@@ -1,0 +1,794 @@
+.container {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(180deg, rgba(34, 114, 167, 1) 0%, rgba(13, 44, 65, 1) 100%);
+  position: relative;
+  /* Ensure container is tall enough to show footer at y:1727 */
+  min-height: 1787px; /* From Figma: page height */
+  overflow: visible;
+  padding-bottom: 40px; /* Add padding to ensure footer is visible */
+}
+
+/* Header */
+.header {
+  width: 100%;
+  height: 104px;
+  background: linear-gradient(180deg, rgba(39, 132, 193, 1) 0%, rgba(18, 62, 91, 1) 100%);
+  position: relative;
+}
+
+.headerContent {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0;
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.logoContainer {
+  width: 77px;
+  height: 77px;
+  position: absolute;
+  left: 62px;
+  top: 14px;
+  text-decoration: none;
+  display: block;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.logo {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.searchContainer {
+  position: absolute;
+  left: 468px;
+  top: 25px;
+}
+
+.searchBar {
+  width: 481.26px;
+  height: 53px;
+  background: linear-gradient(90deg, rgba(45, 68, 78, 1) 0%, rgba(104, 157, 180, 1) 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  padding: 0 24.68px;
+  gap: 24.68px;
+}
+
+.searchIcon {
+  width: 50.62px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.searchText {
+  font-family: 'Myanmar Khyay', sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.347em;
+  color: #FFFFFF;
+}
+
+.cameraIcon {
+  position: absolute;
+  left: 1035px;
+  top: 25px;
+  width: 58px;
+  height: 53px;
+  cursor: pointer;
+}
+
+.settingsIcon {
+  position: absolute;
+  left: 1141px;
+  top: 19px;
+  width: 65px;
+  height: 65px;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+}
+
+.profileIcon {
+  position: absolute;
+  left: 1256px;
+  top: 25px;
+  width: 53px;
+  height: 53px;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+}
+
+/* Settings Section */
+.settingsSection {
+  width: 100%;
+  position: relative;
+  background: rgba(65, 67, 72, 0.34);
+  box-shadow: 0px 4px 12px 6px rgba(0, 0, 0, 0.25);
+  padding: 0;
+  margin: 0;
+  margin-top: 10px; /* 114 - 104 (settings section y - header height) */
+}
+
+.settingsContent {
+  max-width: 1440px;
+  margin: 0 auto;
+  position: relative;
+  padding: 0;
+  height: 758px;
+}
+
+.settingsTitle {
+  position: absolute;
+  left: 62px;
+  top: 524.85px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.2102272033691406em;
+  text-align: left;
+  color: #FFFFFF;
+  width: 278px;
+  height: 72.93px;
+  margin: 0;
+}
+
+/* Profile Section */
+.profileSection {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.profileImageContainer {
+  position: absolute;
+  left: 62px;
+  top: 93px;
+  width: 331px;
+  height: 332px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000000;
+}
+
+.profileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileInfo {
+  position: absolute;
+  left: 474px;
+  top: 114.92px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.profileName {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.2102272033691406em;
+  text-align: left;
+  color: #FFFFFF;
+  width: 278px;
+  height: 72.93px;
+  margin: 0 0 0 0;
+}
+
+.profileUsername {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  text-align: left;
+  color: #FFFFFF;
+  width: 216px;
+  height: 74.03px;
+  margin: 14.19px 0 0 0; /* 201.1 - 114.92 - 72.93 */
+}
+
+.profileBio {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 2.6em;
+  text-align: left;
+  color: #FFFFFF;
+  width: 833px;
+  height: 158.01px;
+  margin: 29.84px 0 0 0; /* 304.97 - 201.1 - 74.03 */
+}
+
+.editButton {
+  position: absolute;
+  left: 1155px;
+  top: 141.43px;
+  width: 118px;
+  height: 64.09px;
+  background: #3CD4BB;
+  border-radius: 8px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2102272510528564em;
+  text-align: center;
+  color: #131927;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: opacity 0.3s ease;
+}
+
+.editButton:hover {
+  opacity: 0.9;
+}
+
+/* Navigation Tabs */
+.navTabs {
+  position: absolute;
+  left: 62px;
+  top: 633.14px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 45px;
+  height: 74.03px;
+}
+
+.navTab,
+.navTabActive {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  text-align: left;
+  color: #FFFFFF;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navTabActive {
+  font-weight: 700;
+}
+
+.navTab:hover {
+  opacity: 0.8;
+}
+
+/* Main Content */
+.mainContent {
+  width: 100%;
+  position: relative;
+  padding: 0;
+  /* Settings section ends at: header(104) + margin-top(10) + height(758) = 872px from top */
+  /* Settings container starts at y:980 from top, so we need 108px gap */
+  margin-top: 0;
+  padding-top: 0;
+  overflow: visible;
+  min-height: auto;
+}
+
+.settingsContainer {
+  max-width: 1440px;
+  margin: 0 auto;
+  position: relative;
+  padding: 0;
+  /* Settings section ends at: header(104) + margin-top(10) + height(758) = 872px from top */
+  /* Settings container starts at y:980 from top, so gap = 980 - 872 = 108px */
+  margin-top: 108px;
+  min-height: 535px;
+  width: 1247px; /* Container width from Figma */
+  box-sizing: border-box;
+}
+
+/* Settings Cards Container */
+.settingsContainer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%; /* Use 100% to fill the container */
+  height: 535px;
+  background: linear-gradient(161deg, rgba(60, 212, 187, 0.5) 0%, rgba(65, 67, 72, 0.5) 100%);
+  border-radius: 20px;
+  z-index: 0;
+  box-sizing: border-box;
+}
+
+.settingCard {
+  position: relative;
+  z-index: 1;
+}
+
+/* Camera Access Card - at x:66, y:69 relative to container */
+.settingCard:nth-of-type(1) {
+  position: absolute;
+  left: 66px; /* Relative to container left edge */
+  top: 69px; /* Relative to settingsContainer top */
+  width: 1119px;
+  height: 67px;
+}
+
+.settingCard:nth-of-type(1) .settingItem {
+  width: 100%;
+  height: 100%;
+  background: #AEB1FB;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 44px;
+  box-sizing: border-box;
+}
+
+.settingCard:nth-of-type(1) .settingLabel {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  color: #000000;
+  width: auto;
+  height: 67px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Clear listening History Card - at x:66, y:228 relative to container */
+.settingCard:nth-of-type(2) {
+  position: absolute;
+  left: 66px; /* Relative to container left edge */
+  top: 228px;
+  width: 1119px;
+  height: 67px;
+}
+
+.settingCard:nth-of-type(2) .settingItem {
+  width: 100%;
+  height: 100%;
+  background: #AEB1FB;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 44px;
+  box-sizing: border-box;
+}
+
+.settingCard:nth-of-type(2) .settingLabel {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  color: #000000;
+  width: auto;
+  height: 67px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Delete Account Card - at x:66, y:384 relative to container */
+.settingCard:nth-of-type(3) {
+  position: absolute;
+  left: 66px; /* Relative to container left edge */
+  top: 384px;
+  width: 1119px;
+  height: 67px;
+}
+
+.settingCard:nth-of-type(3) .settingItem {
+  width: 100%;
+  height: 100%;
+  background: #AEB1FB;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 44px;
+  box-sizing: border-box;
+}
+
+.settingCard:nth-of-type(3) .settingLabel {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  color: #000000;
+  width: auto;
+  height: 67px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Log Out Card - at x:1025, y:384 relative to container */
+.settingCardLogOut {
+  position: absolute;
+  left: 1025px; /* Relative to container left edge */
+  top: 384px; /* Same y as Delete Account */
+  width: 121px;
+  height: 67px;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.settingCardLogOut .settingItem {
+  width: 100%;
+  height: 100%;
+  background: #AEB1FB;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.settingCardLogOut .settingLabelLogOut {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  color: #000000;
+  width: auto;
+  height: 67px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  text-align: center;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+/* Footer */
+.footer {
+  width: 100%;
+  position: relative;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  /* Footer at y:1727 from top, settings container ends at: header(104) + settings section(10+758) + gap(108) + container height(535) = 1515px */
+  /* So margin-top = 1727 - 1515 = 212px */
+  margin-top: 212px;
+  margin-bottom: 40px;
+  min-height: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  visibility: visible;
+  z-index: 10;
+  overflow: visible;
+}
+
+.copyright {
+  font-family: 'Lusitana', serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.297em;
+  text-align: center;
+  color: #FFFFFF;
+  width: auto;
+  min-width: 380px;
+  height: auto;
+  margin: 0 auto;
+  padding: 0;
+  display: block;
+  visibility: visible;
+  white-space: nowrap;
+  overflow: visible;
+  opacity: 1;
+  z-index: 11;
+}
+
+/* Toggle Switch Styles */
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 57px;
+  height: 39.19px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #000000;
+  transition: 0.3s;
+  border-radius: 34px;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 31.35px;
+  width: 31.35px;
+  left: 3.92px;
+  bottom: 3.92px;
+  background-color: #FFFFFF;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggleSwitch input:checked + .toggleSlider {
+  background-color: #3CD4BB;
+}
+
+.toggleSwitch input:checked + .toggleSlider:before {
+  transform: translateX(17.73px);
+}
+
+/* Delete Account Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  position: relative;
+  width: 744px;
+  height: 345px;
+  background: linear-gradient(156deg, rgba(60, 212, 187, 1) 0%, rgba(65, 67, 72, 1) 100%);
+  border-radius: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.closeButton {
+  position: absolute;
+  top: 20.22px;
+  right: 20.22px;
+  width: 38.02px;
+  height: 39.78px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.closeButton svg {
+  width: 100%;
+  height: 100%;
+}
+
+.questionMarkIcon {
+  position: absolute;
+  top: 153px;
+  left: 391px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.questionMarkIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.modalText {
+  position: absolute;
+  left: 72px;
+  top: 60px;
+  font-family: 'Konkhmer Sleokchher', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.806640625em;
+  text-align: center;
+  color: #FFFFFF;
+  width: 579px;
+  height: 128px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: pre-line;
+}
+
+.modalButtons {
+  position: absolute;
+  left: 153px;
+  top: 228px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 96.74px; /* 267 - 170.26 = 96.74px gap between buttons */
+  width: 437.26px;
+  height: 64.9px;
+}
+
+.laterButton,
+.deleteButton {
+  width: 170.26px;
+  height: 64.9px;
+  background: linear-gradient(180deg, rgba(247, 209, 212, 1) 0%, rgba(145, 123, 124, 1) 100%);
+  border-radius: 45px;
+  border: none;
+  font-family: 'Myanmar Khyay', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.3470000267028808em;
+  text-align: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+  flex-shrink: 0;
+}
+
+.laterButton:hover,
+.deleteButton:hover {
+  opacity: 0.9;
+}
+
+.settingCard:nth-of-type(3) {
+  cursor: pointer;
+}
+
+.settingCard:nth-of-type(3):hover {
+  opacity: 0.9;
+}
+
+/* Log Out Modal */
+.modalContentLogout {
+  position: relative;
+  width: 744px;
+  height: 345px;
+  background: linear-gradient(156deg, rgba(60, 212, 187, 1) 0%, rgba(65, 67, 72, 1) 100%);
+  border-radius: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.closeButtonLogout {
+  position: absolute;
+  top: 20.16px;
+  left: 688.74px;
+  width: 38.02px;
+  height: 37.84px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.closeButtonLogout svg {
+  width: 100%;
+  height: 100%;
+}
+
+.questionMarkIconLogout {
+  position: absolute;
+  top: 121px;
+  left: 590px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.questionMarkIconLogout svg {
+  width: 100%;
+  height: 100%;
+}
+
+.modalTextLogout {
+  position: absolute;
+  left: 76px;
+  top: 71px;
+  font-family: 'Konkhmer Sleokchher', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.806640625em;
+  text-align: center;
+  color: #FFFFFF;
+  width: 591.49px;
+  height: 86.95px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: pre-line;
+}
+
+.modalButtonsLogout {
+  position: absolute;
+  left: 165px;
+  top: 224px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 96.74px; /* 267 - 170.26 = 96.74px gap between buttons */
+  width: 437.26px;
+  height: 64.9px;
+}
+
+.laterButtonLogout,
+.logoutButton {
+  width: 170.26px;
+  height: 64.9px;
+  background: linear-gradient(180deg, rgba(247, 209, 212, 1) 0%, rgba(145, 123, 124, 1) 100%);
+  border-radius: 45px;
+  border: none;
+  font-family: 'Myanmar Khyay', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.3470000267028808em;
+  text-align: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+  flex-shrink: 0;
+}
+
+.laterButtonLogout:hover,
+.logoutButton:hover {
+  opacity: 0.9;
+}
+

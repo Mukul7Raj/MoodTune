@@ -1,0 +1,280 @@
+.container {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: #AEB1FB;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+  overflow: auto;
+  padding: 62px 0;
+}
+
+/* Main container with gradient - matches Rectangle 97 */
+.mainContainer {
+  width: 1440px;
+  height: 1476px;
+  background: linear-gradient(180deg, rgba(60, 212, 187, 1) 0%, rgba(65, 67, 72, 1) 100%);
+  border-radius: 58px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+  margin: 0 auto;
+}
+
+/* Profile Image Container - Group 120 */
+.profileImageContainer {
+  position: absolute;
+  left: 585px; /* 1143 - 558 (Figma x relative to frame, adjusted for centered container) */
+  top: 164px; /* 226 - 62 (Figma y relative to frame) */
+  width: 270px;
+  height: 269px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+/* Form Container */
+.formContainer {
+  position: absolute;
+  left: 131px; /* 689 - 558 (First Name x relative to frame, adjusted for centered container) */
+  top: 534px; /* 596 - 62 (First Name label y relative to frame) */
+  width: 100%;
+  max-width: 1175px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Field Group */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 0;
+}
+
+/* Labels */
+.label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 2.09375em;
+  text-align: left;
+  color: #FFFFFF;
+  width: auto;
+  height: auto;
+  margin-bottom: 0;
+}
+
+/* First Name - label at x:689, input at x:689 (aligned) */
+.fieldGroup:nth-of-type(1) {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.fieldGroup:nth-of-type(1) .label {
+  width: 287px;
+  height: 111px;
+  margin-bottom: 0;
+}
+
+.fieldGroup:nth-of-type(1) .input {
+  position: absolute;
+  left: 0; /* Input starts at x:689, same as label */
+  top: 63px; /* 659 - 596 (input y - label y) */
+  width: 507px;
+  height: 96px;
+}
+
+/* Username - label at x:1360, input at x:1358 (need to align label to input) */
+.fieldGroup:nth-of-type(2) {
+  position: absolute;
+  left: 669px; /* 1358 - 689 (Username input x - First Name input x) */
+  top: 0;
+}
+
+.fieldGroup:nth-of-type(2) .label {
+  width: 287px;
+  height: 111px;
+  margin-bottom: 0;
+  position: relative;
+  left: 2px; /* 1360 - 1358 (label x - input x) to align with input */
+}
+
+.fieldGroup:nth-of-type(2) .input {
+  position: absolute;
+  left: 0;
+  top: 63px; /* 659 - 596 (input y - label y) */
+  width: 507px;
+  height: 96px;
+}
+
+/* Email - label at x:690, input at x:689 (need to align label to input) */
+.fieldGroup:nth-of-type(3) {
+  position: absolute;
+  left: 0;
+  top: 201px; /* 797 - 596 (Email label y - First Name label y) */
+}
+
+.fieldGroup:nth-of-type(3) .label {
+  width: 286px;
+  height: 111px;
+  margin-bottom: 0;
+  position: relative;
+  left: 1px; /* 690 - 689 (label x - input x) to align with input */
+}
+
+.fieldGroup:nth-of-type(3) .input {
+  position: absolute;
+  left: 0;
+  top: 63px; /* 860 - 797 (input y - label y) */
+  width: 507px;
+  height: 96px;
+}
+
+/* Phone Number - label at x:1360, input at x:1358 (need to align label to input) */
+.fieldGroup:nth-of-type(4) {
+  position: absolute;
+  left: 669px; /* 1358 - 689 (Phone input x - First Name input x) */
+  top: 201px; /* 797 - 596 (Phone label y - First Name label y) */
+}
+
+.fieldGroup:nth-of-type(4) .label {
+  width: 287px;
+  height: 111px;
+  margin-bottom: 0;
+  position: relative;
+  left: 2px; /* 1360 - 1358 (label x - input x) to align with input */
+}
+
+.fieldGroup:nth-of-type(4) .input {
+  position: absolute;
+  left: 0;
+  top: 63px; /* 860 - 797 (input y - label y) */
+  width: 507px;
+  height: 96px;
+}
+
+/* Bio - label at x:691, input at x:690 (need to align label to input) */
+.fieldGroup:nth-of-type(5) {
+  position: absolute;
+  left: 0;
+  top: 424px; /* 1020 - 596 (Bio label y - First Name label y) */
+}
+
+.fieldGroup:nth-of-type(5) .label {
+  width: 286px;
+  height: 111px;
+  margin-bottom: 0;
+  position: relative;
+  left: 1px; /* 691 - 690 (label x - input x) to align with input */
+}
+
+.fieldGroup:nth-of-type(5) .textarea {
+  position: absolute;
+  left: 0;
+  top: 63px; /* 1083 - 1020 (textarea y - label y) */
+  width: 1175px;
+  height: 192px;
+}
+
+/* Input Fields */
+.input,
+.textarea {
+  background: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  color: #000000;
+  padding: 0 20px;
+  outline: none;
+}
+
+.input {
+  height: 96px;
+}
+
+.textarea {
+  height: 192px;
+  resize: none;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #999999;
+}
+
+/* Button Container */
+.buttonContainer {
+  position: absolute;
+  left: 805px; /* 1363 - 558 (CANCEL button x relative to frame, adjusted for centered container) */
+  top: 1295px; /* 1357 - 62 (CANCEL button y relative to frame) */
+  display: flex;
+  gap: 124px; /* 1663 - 1363 - 176 (SAVE x - CANCEL x - button width) */
+  align-items: center;
+}
+
+/* CANCEL Button - Group 43 */
+.cancelButton {
+  width: 176px;
+  height: 61.87px;
+  background: linear-gradient(180deg, rgba(248, 209, 210, 1) 0%, rgba(146, 123, 124, 1) 100%);
+  border-radius: 15px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2102272033691406em;
+  text-align: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.cancelButton:hover {
+  opacity: 0.9;
+}
+
+/* SAVE Button - Group 119 */
+.saveButton {
+  width: 176px;
+  height: 61.87px;
+  background: linear-gradient(180deg, rgba(248, 209, 210, 1) 0%, rgba(146, 123, 124, 1) 100%);
+  border-radius: 15px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2102272033691406em;
+  text-align: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.saveButton:hover {
+  opacity: 0.9;
+}
+

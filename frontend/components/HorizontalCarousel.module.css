@@ -1,0 +1,184 @@
+.section {
+  margin-bottom: 4rem;
+  padding: 2rem 0;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 2rem;
+}
+
+.sectionTitle {
+  font-family: 'Konkhmer Sleokchher', sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.8em;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.navigationButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.navButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  background: transparent;
+  color: #FFFFFF;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.navButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.carouselContainer {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  padding: 0 2rem;
+}
+
+.carouselContainer::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.carouselTrack {
+  display: flex;
+  gap: 20px;
+  padding-bottom: 1rem;
+}
+
+.carouselItem {
+  flex-shrink: 0;
+  background: transparent;
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  width: var(--item-width, 252px);
+  max-width: var(--item-width, 252px);
+}
+
+.carouselItem:hover {
+  transform: translateY(-5px);
+}
+
+.itemImage {
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.itemImage.circular {
+  border-radius: 50%;
+}
+
+.itemImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholderImage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.placeholderImage img {
+  opacity: 0.5;
+}
+
+.itemInfo {
+  text-align: center;
+  width: 100%;
+  max-width: var(--item-width, 252px);
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+}
+
+.itemTitle {
+  font-family: 'Lusitana', serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.3em;
+  color: #FFFFFF;
+  margin: 0 0 0.25rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+}
+
+.itemSubtitle {
+  font-family: 'Lusitana', serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.3em;
+  color: #FFFFFF;
+  margin: 0;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+}
+
+/* Artist List specific styles */
+.artistItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.artistImage {
+  width: 226px;
+  height: 217px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.artistName {
+  font-family: 'Lusitana', serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.3em;
+  color: #FFFFFF;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
