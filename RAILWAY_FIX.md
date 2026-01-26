@@ -1,8 +1,27 @@
 # Railway Build Error Fix
 
-## Error: "Error creating build plan with Railpack"
+## Error: "No start command was found" / "Error creating build plan with Railpack"
 
-This error occurs when Railway can't automatically detect your project structure. Here are the solutions:
+This error occurs when Railway can't automatically detect your project structure or start command. Here are the solutions:
+
+## 🚨 IMMEDIATE FIX: Set Start Command Manually
+
+**This is the fastest solution for your current error:**
+
+1. **In Railway Dashboard**:
+   - Go to your service → **Settings** tab
+   - Scroll down to **"Deploy"** section
+   - Find **"Start Command"** field
+   - Enter: `gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app:app`
+   - Click **"Save"**
+   - Go to **"Deployments"** tab and click **"Redeploy"** or push a new commit
+
+**Alternative Start Command** (simpler):
+```
+gunicorn app:app --bind 0.0.0.0:$PORT
+```
+
+This should fix the "No start command was found" error immediately!
 
 ## ✅ Solution 1: Verify File Structure (Easiest)
 
@@ -26,11 +45,13 @@ This error occurs when Railway can't automatically detect your project structure
 If Solution 1 doesn't work:
 
 1. **In Railway Dashboard**:
-   - Go to your service → Settings → Build
-   - **Disable** "Auto Deploy" temporarily
+   - Go to your service → **Settings** tab
+   - Scroll to **"Build"** section
    - Set **Build Command**: `pip install -r requirements.txt`
-   - Set **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
-   - Save and redeploy
+   - Scroll to **"Deploy"** section  
+   - Set **Start Command**: `gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app:app`
+   - Click **"Save"**
+   - Go to **"Deployments"** tab and trigger a new deployment
 
 ## ✅ Solution 3: Use Dockerfile (Most Reliable)
 
@@ -65,7 +86,8 @@ If Solutions 1 & 2 don't work, Railway will automatically use the Dockerfile:
 Before redeploying, ensure:
 
 - [ ] `backend/requirements.txt` exists
-- [ ] `backend/Procfile` exists with: `web: gunicorn app:app --bind 0.0.0.0:$PORT`
+- [ ] `backend/Procfile` exists with: `web: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app:app`
+- [ ] **Start Command is set in Railway Settings** (most important for your error!)
 - [ ] `backend/runtime.txt` exists with: `python-3.10.0`
 - [ ] Root Directory in Railway is set to `backend`
 - [ ] All environment variables are set
