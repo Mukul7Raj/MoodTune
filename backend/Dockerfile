@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libffi-dev \
     libssl-dev \
+    bash \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file
@@ -23,8 +24,13 @@ RUN pip install --upgrade pip setuptools wheel && \
 # Copy application code
 COPY . .
 
-# Expose port (Railway will set PORT env var)
-EXPOSE $PORT
+# Copy and set permissions for entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Run Gunicorn
-CMD gunicorn app:app --bind 0.0.0.0:$PORT
+# Expose port (default 5000, Railway will override with PORT env var)
+EXPOSE 5000
+
+# Use entrypoint script to handle PORT variable
+# Use bash explicitly to ensure shell variable expansion works
+ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
