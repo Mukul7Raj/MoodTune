@@ -1,0 +1,37 @@
+# Production Requirements (Minimal - Core functionality only)
+# Heavy ML packages are optional and can be added if needed
+
+# Core Flask dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-JWT-Extended==4.6.0
+python-dotenv==1.0.1
+Werkzeug==2.3.7
+gunicorn==21.2.0
+
+# HTTP and API
+requests==2.31.0
+
+# Image processing (lightweight)
+Pillow==10.0.0
+
+# Data handling
+numpy==1.24.3
+typing-extensions>=4.8.0
+
+# Optional: Uncomment these if you need emotion detection in production
+# Note: These are heavy and may cause build timeouts
+# opencv-python==4.8.1.78
+# fer==22.5.1
+# tensorflow==2.13.0
+# opencv-contrib-python==4.8.1.78
+
+# Optional: Uncomment if you need voice/speech features
+# SpeechRecognition==3.10.0
+# PyAudio==0.2.13
+
+# Optional: Uncomment if you need video/media processing
+# moviepy==1.0.3
+# mediadecoder==0.1.5
+# mediapipe==0.10.9
