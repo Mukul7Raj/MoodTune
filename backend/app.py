@@ -28,17 +28,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.config.from_object(Config)
-
-# Configure CORS with environment variable support
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-cors_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    frontend_url
-]
-# Remove duplicates while preserving order
-cors_origins = list(dict.fromkeys(cors_origins))
-CORS(app, origins=cors_origins, supports_credentials=True)
+CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], supports_credentials=True)
 
 db.init_app(app)
 jwt = JWTManager(app)
@@ -204,8 +194,7 @@ def spotify_callback():
         return jsonify({"error": "Missing code in callback"}), 400
 
     # Redirect to frontend home page with the code - frontend will handle the connection
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    return redirect(f"{frontend_url}/home?spotify_code={code}")
+    return redirect(f"http://localhost:3000/home?spotify_code={code}")
 
 
 @app.route('/google/callback')
@@ -2297,8 +2286,4 @@ with app.app_context():
     print("✅ Database initialized successfully!")
 
 if __name__ == '__main__':
-    # Use environment variables for production, debug mode for development
-    debug_mode = os.getenv("FLASK_ENV") != "production"
-    port = int(os.getenv("PORT", 5000))
-    host = os.getenv("HOST", "0.0.0.0")
-    app.run(debug=debug_mode, host=host, port=port)
+    app.run(debug=True)
