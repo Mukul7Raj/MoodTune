@@ -56,7 +56,8 @@ This is the easiest and most cost-effective option for beginners.
 
 3. **Configure Backend Service**:
    - Railway will auto-detect Python
-   - Set Root Directory to: `backend`
+   - **IMPORTANT**: Set Root Directory to: `backend`
+   - **IMPORTANT**: Make sure `requirements.txt` exists in the `backend` folder (not just in root)
    - Add environment variables:
      ```
      DATABASE_URL=sqlite:///moodmusic.db
@@ -226,6 +227,17 @@ We need to make the backend production-ready:
 ## Troubleshooting
 
 ### Backend Issues
+
+**Problem**: "Error creating build plan with Railpack" in Railway
+- **Solution**: 
+  1. **Ensure `requirements.txt` is in the `backend` folder** (not just in root)
+  2. **Set Root Directory correctly**: In Railway service settings, set Root Directory to `backend`
+  3. **Check for configuration files**: Make sure `Procfile`, `runtime.txt`, and `nixpacks.toml` exist in `backend` folder
+  4. **Manual build configuration**: If auto-detection fails:
+     - Go to Railway service → Settings → Build
+     - Set Build Command: `pip install -r requirements.txt`
+     - Set Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT`
+  5. **Alternative**: Try using Dockerfile instead (see below)
 
 **Problem**: Backend not starting
 - **Solution**: Check logs in Railway/Render dashboard
