@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { MusicPlayerProvider } from '@/contexts/MusicPlayerContext'
+import GlobalMusicPlayer from '@/components/GlobalMusicPlayer'
 
 export const metadata: Metadata = {
   title: 'MoodTune - Home',
@@ -21,7 +23,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthProvider>
-          {children}
+          <MusicPlayerProvider>
+            {children}
+            <GlobalMusicPlayer />
+          </MusicPlayerProvider>
         </AuthProvider>
       </body>
     </html>

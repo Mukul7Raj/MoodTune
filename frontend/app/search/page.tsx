@@ -4,9 +4,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext'
 import { musicAPI, authAPI } from '@/lib/api'
 import { useRouter, useSearchParams } from 'next/navigation'
-import MusicPlayer from '@/components/MusicPlayer'
 import styles from './page.module.css'
 
 interface Song {
@@ -29,9 +29,7 @@ export default function SearchResults() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Song[]>([])
   const [loading, setLoading] = useState(false)
-  const [currentSong, setCurrentSong] = useState<Song | null>(null)
-  const [showPlayer, setShowPlayer] = useState(false)
-  const [playQueue, setPlayQueue] = useState<Song[]>([])
+  const { playSong } = useMusicPlayer()
   const [profile, setProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -221,34 +219,36 @@ export default function SearchResults() {
     if (canEmbed) {
       // Build play queue from context (search results)
       const songsToPlay = allSongs.length > 0 ? allSongs : searchResults
-      setPlayQueue(songsToPlay)
-      setCurrentSong(song)
-      setShowPlayer(true)
+      
+      // Format song data for player
+      const songData = {
+        id: song.id || song.spotifyUri || song.url,
+        title: song.title,
+        artist: song.artist || 'Unknown Artist',
+        album: song.album,
+        spotifyUri: song.spotifyUri,
+        spotifyId: (song as any).spotifyId,
+        url: song.url,
+        imageUrl: song.imageUrl,
+        source: song.source || 'Unknown'
+      }
+      
+      // Format queue for player
+      const queue = songsToPlay.map(s => ({
+        id: s.id || s.spotifyUri || s.url,
+        title: s.title,
+        artist: s.artist || 'Unknown Artist',
+        album: s.album,
+        spotifyUri: s.spotifyUri,
+        spotifyId: (s as any).spotifyId,
+        url: s.url,
+        imageUrl: s.imageUrl,
+        source: s.source || 'Unknown'
+      }))
+      
+      playSong(songData, queue)
     } else {
       alert('This song cannot be played in the player. Please try another song.')
-    }
-  }
-
-  const handlePlayerClose = () => {
-    setShowPlayer(false)
-    setCurrentSong(null)
-  }
-
-  const handleNextSong = () => {
-    if (!currentSong || playQueue.length === 0) return
-    
-    const currentIndex = playQueue.findIndex(s => (s.id || s.title) === (currentSong.id || currentSong.title))
-    if (currentIndex < playQueue.length - 1) {
-      setCurrentSong(playQueue[currentIndex + 1])
-    }
-  }
-
-  const handlePreviousSong = () => {
-    if (!currentSong || playQueue.length === 0) return
-    
-    const currentIndex = playQueue.findIndex(s => (s.id || s.title) === (currentSong.id || currentSong.title))
-    if (currentIndex > 0) {
-      setCurrentSong(playQueue[currentIndex - 1])
     }
   }
 
@@ -547,15 +547,6 @@ export default function SearchResults() {
         </div>
       </main>
 
-      {/* Music Player */}
-      <MusicPlayer
-        song={currentSong}
-        isVisible={showPlayer}
-        onClose={handlePlayerClose}
-        onNext={playQueue.length > 0 ? handleNextSong : undefined}
-        onPrevious={playQueue.length > 0 ? handlePreviousSong : undefined}
-        queue={playQueue}
-      />
     </div>
   )
 }

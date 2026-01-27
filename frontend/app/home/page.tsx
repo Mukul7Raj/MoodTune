@@ -4,10 +4,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext'
 import { emotionAPI, musicAPI, spotifyAPI, featuredAPI, settingsAPI, authAPI } from '@/lib/api'
 import { useRouter, usePathname } from 'next/navigation'
 import HorizontalCarousel from '@/components/HorizontalCarousel'
-import MusicPlayer from '@/components/MusicPlayer'
 import styles from './page.module.css'
 
 interface Song {
@@ -55,9 +55,7 @@ export default function HomeAfterLogin() {
   const streamRef = useRef<MediaStream | null>(null)
   const searchBarRef = useRef<HTMLDivElement>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
-  const [currentSong, setCurrentSong] = useState<Song | null>(null)
-  const [showPlayer, setShowPlayer] = useState(false)
-  const [playQueue, setPlayQueue] = useState<Song[]>([])
+  const { playSong } = useMusicPlayer()
   const [profile, setProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(true)
 
@@ -536,10 +534,8 @@ export default function HomeAfterLogin() {
           }))
         : []
       
-      setPlayQueue(queue)
-      
-      // Open in picture-in-picture player
-      setCurrentSong({
+      // Open in picture-in-picture player using global context
+      const songData = {
         id: song.id || song.spotifyUri || song.url,
         title: song.title,
         artist: song.artist || song.subtitle || 'Unknown Artist',
@@ -549,8 +545,8 @@ export default function HomeAfterLogin() {
         url: song.url,
         imageUrl: song.imageUrl,
         source: song.source || 'Unknown'
-      })
-      setShowPlayer(true)
+      }
+      playSong(songData, queue)
     } else {
       // Fallback to external link if embedding not possible
       if (song.spotifyUrl) {
@@ -573,30 +569,6 @@ export default function HomeAfterLogin() {
     }
   }
 
-  const handlePlayerClose = () => {
-    setShowPlayer(false)
-    setCurrentSong(null)
-  }
-
-  const handleNextSong = () => {
-    // Find current song index in queue
-    if (!currentSong || playQueue.length === 0) return
-    
-    const currentIndex = playQueue.findIndex(s => s.id === currentSong.id)
-    if (currentIndex < playQueue.length - 1) {
-      setCurrentSong(playQueue[currentIndex + 1])
-    }
-  }
-
-  const handlePreviousSong = () => {
-    // Find current song index in queue
-    if (!currentSong || playQueue.length === 0) return
-    
-    const currentIndex = playQueue.findIndex(s => s.id === currentSong.id)
-    if (currentIndex > 0) {
-      setCurrentSong(playQueue[currentIndex - 1])
-    }
-  }
 
   // Handle artist click - search for artist's songs or show artist details
   const handleArtistClick = async (artist: any) => {
@@ -1257,16 +1229,6 @@ export default function HomeAfterLogin() {
           />
         )}
       </main>
-
-      {/* Music Player - Picture in Picture */}
-      <MusicPlayer
-        song={currentSong}
-        isVisible={showPlayer}
-        onClose={handlePlayerClose}
-        onNext={playQueue.length > 0 ? handleNextSong : undefined}
-        onPrevious={playQueue.length > 0 ? handlePreviousSong : undefined}
-        queue={playQueue}
-      />
 
       {/* Footer */}
       <footer className={styles.footer}>
