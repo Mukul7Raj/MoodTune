@@ -88,7 +88,7 @@ source venv/bin/activate
 ### 2.4 Install Python Dependencies
 ```bash
 # Make sure you're in the backend directory with venv activated
-pip install -r ../requirements.txt
+pip install -r requirements.txt
 ```
 
 **⏱️ Note:** This may take 5-10 minutes as it installs TensorFlow and other large packages. Be patient!
@@ -274,7 +274,7 @@ Verify everything is working correctly:
 1. Ensure virtual environment is activated (you should see `(venv)` in prompt)
 2. Reinstall dependencies:
    ```bash
-   pip install -r ../requirements.txt
+   pip install -r requirements.txt
    ```
 
 ### Issue 4: Frontend won't start - "npm: command not found"
@@ -297,7 +297,7 @@ Verify everything is working correctly:
 **Solution:**
 - **Windows:** May need Visual C++ Redistributable (download from Microsoft)
 - Try upgrading pip first: `pip install --upgrade pip`
-- Then retry: `pip install -r ../requirements.txt`
+- Then retry: `pip install -r requirements.txt` (from backend directory)
 - If still failing, emotion detection will work in fallback mode (app will still function)
 
 ### Issue 8: Port already in use (Port 5000 or 3000)
@@ -330,7 +330,6 @@ Your project structure should look like this:
 MoodTune/
 ├── .env                    ← CREATE HERE (project root) - REQUIRED
 ├── .gitignore
-├── requirements.txt
 ├── TEAM_SETUP_GUIDE.md     ← This file
 ├── backend/
 │   ├── venv/               ← Created after Step 2.2
@@ -393,7 +392,7 @@ cd backend
 python -m venv venv
 venv\Scripts\activate                    # Windows
 # OR: source venv/bin/activate           # macOS/Linux
-pip install -r ../requirements.txt
+pip install -r requirements.txt
 cd ..
 # Create .env file at project root with your credentials
 cd backend
@@ -461,7 +460,7 @@ Before asking for help, make sure you've completed:
 - [ ] Installed Python 3.10+ and Node.js 18+
 - [ ] Created virtual environment in `backend/venv`
 - [ ] Activated virtual environment
-- [ ] Installed backend dependencies (`pip install -r ../requirements.txt`)
+- [ ] Installed backend dependencies (`pip install -r requirements.txt` from backend directory)
 - [ ] Created `.env` file at **project root** with all required variables
 - [ ] Created `backend/instance` directory
 - [ ] Installed frontend dependencies (`npm install`)
