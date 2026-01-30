@@ -58,13 +58,34 @@ export default function HomeAfterLogin() {
   const { playSong } = useMusicPlayer()
   const [profile, setProfile] = useState<any>(null)
   const [profileLoading, setProfileLoading] = useState(true)
+  const handlingGoogleTokenRef = useRef(false)
 
   const languages = ['Hindi', 'English', 'Bengali', 'Marathi', 'Telugu', 'Tamil', 'Global']
   
   // Mental well-being triggers (negative emotions)
   const MENTAL_WELLBEING_TRIGGERS = ["sad", "depressed", "angry", "stressed", "fear", "anxious"]
 
+  // Handle Google OAuth callback: store token from URL and refresh auth so user stays on home
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const googleToken = params.get('google_token')
+    if (googleToken) {
+      handlingGoogleTokenRef.current = true
+      localStorage.setItem('auth_token', googleToken)
+      refreshUser().then(() => {
+        handlingGoogleTokenRef.current = false
+        router.replace('/home')
+      }).catch(() => {
+        handlingGoogleTokenRef.current = false
+      })
+      return
+    }
+  }, [router, refreshUser])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('google_token')) return
+    if (handlingGoogleTokenRef.current) return
     if (!authLoading && !isAuthenticated) {
       router.push('/login')
     }

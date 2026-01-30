@@ -12,25 +12,25 @@ export default function Login() {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false)
 
   useEffect(() => {
-    // Handle Google login callback
-    const googleToken = searchParams.get('google_token')
-    const error = searchParams.get('error')
+    // Handle Google login callback - read from URL so we don't miss params (hydration)
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const googleToken = params.get('google_token') ?? searchParams.get('google_token')
+    const error = params.get('error') ?? searchParams.get('error')
 
     if (googleToken) {
-      // Store token and redirect to home
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_token', googleToken)
-        // Redirect to home page
-        window.location.href = '/home'
-      }
-    } else if (error) {
-      const details = searchParams.get('details')
+      localStorage.setItem('auth_token', googleToken)
+      // Replace URL and go to home so user lands on homepage (Spotify not linked yet is fine)
+      window.location.replace('/home')
+      return
+    }
+    if (error) {
+      const details = params.get('details') ?? searchParams.get('details')
       const errorMessage = details 
         ? `Google login failed: ${error}. Details: ${details}`
         : `Google login failed: ${error}`
       console.error('Google login error:', error, details)
       alert(errorMessage)
-      // Clean URL
       router.replace('/login')
     }
   }, [searchParams, router])

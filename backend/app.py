@@ -369,8 +369,8 @@ def google_callback():
             # Create JWT token for the user
             token = create_access_token(identity=str(user.id))
             
-            # Redirect to homepage with token
-            return redirect(f"{frontend_url}/login?google_token={token}&google_linked=true")
+            # Redirect to homepage with token so user lands on home (Spotify can be linked there)
+            return redirect(f"{frontend_url}/home?google_token={token}")
         except Exception as e:
             print(f"❌ Error in Google login/signup callback: {str(e)}")
             import traceback
