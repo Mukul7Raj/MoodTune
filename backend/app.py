@@ -20,15 +20,18 @@ from utils.spotify import get_playlist_for_emotion, get_spotify_token
 # Try to import FER for emotion detection (optional - will fallback if not available)
 try:
     from fer import FER
-    fer_detector = FER(mtcnn=True)
     FER_AVAILABLE = True
 except ImportError:
     FER_AVAILABLE = False
     print("⚠️ FER library not available. Emotion detection from images will be limited.")
 
+fer_detector = None
+
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], supports_credentials=True)
+# CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], supports_credentials=True)
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+CORS(app, origins=[frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"], supports_credentials=True)
 
 db.init_app(app)
 jwt = JWTManager(app)
@@ -570,7 +573,19 @@ def detect_emotion_from_image():
             image_bgr = image_array
         
         # Detect emotions
-        emotions = fer_detector.detect_emotions(image_bgr)
+        global fer_detector
+        if fer_detector is None and FER_AVAILABLE:
+             try:
+                 print("Initializing FER detector (lazy load)...")
+                 fer_detector = FER(mtcnn=True)
+             except Exception as e:
+                 print(f"Error initializing FER: {e}")
+        
+        if fer_detector:
+             emotions = fer_detector.detect_emotions(image_bgr)
+        else:
+             print("FER detector not available.")
+             emotions = []
         
         if not emotions or len(emotions) == 0:
             return jsonify({
@@ -2345,4 +2360,8 @@ with app.app_context():
     print("✅ Database initialized successfully!")
 
 if __name__ == '__main__':
+    print(f"------------ CONFIG DEBUG ------------")
+    print(f"Loaded SPOTIFY_CLIENT_ID: {app.config['SPOTIFY_CLIENT_ID']}")
+    print(f"Loaded SPOTIFY_REDIRECT_URI: '{app.config['SPOTIFY_REDIRECT_URI']}'")
+    print(f"--------------------------------------")
     app.run(debug=True)
