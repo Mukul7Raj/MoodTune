@@ -14,7 +14,6 @@ numpy==1.24.3
 moviepy==1.0.3
 Werkzeug==2.3.7
 SpeechRecognition==3.10.0
-PyAudio==0.2.13
 mediadecoder==0.1.5
 opencv-contrib-python==4.8.1.78
 mediapipe==0.10.9
