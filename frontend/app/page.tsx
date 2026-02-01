@@ -11,11 +11,15 @@ import HorizontalCarousel from '@/components/HorizontalCarousel'
 import styles from './page.module.css'
 
 interface Song {
+  id?: string
   title: string
   artist: string
   album?: string
   spotifyUri?: string
+  spotifyId?: string
   url?: string
+  imageUrl?: string
+  subtitle?: string
   source: string
   emotion?: string
   language?: string
@@ -277,7 +281,7 @@ export default function HomeAfterLogin() {
       // Fetch industry songs separately, excluding trending song IDs to ensure different content
       const trendingSongIds = songs
         .slice(0, 15)
-        .map((s: any) => s.id || s.spotifyId || s.spotifyUri)
+        .map((s: Song) => s.id || s.spotifyId || s.spotifyUri)
         .filter(Boolean)
 
       try {
@@ -1167,11 +1171,11 @@ export default function HomeAfterLogin() {
           <HorizontalCarousel
             title={`Recommended Songs${detectedEmotion ? ` (${detectedEmotion})` : ' - Most Heard Today'}${wellbeingMode ? ' 💚 Well-being Mode' : ''}${selectedLanguage ? ` - ${selectedLanguage}` : ''}`}
             items={recommendations.map((song, index) => ({
+              ...song,
               id: song.id || song.spotifyUri || song.url || `song-${index}`,
-              title: song.title,
+              title: song.title, // Explicitly set title
               subtitle: song.subtitle || song.artist,
-              imageUrl: song.imageUrl || null, // Use null instead of fallback to show placeholder
-              ...song
+              imageUrl: song.imageUrl || undefined, // Use undefined to match CarouselItem type
             }))}
             onItemClick={(item) => {
               handleSongClick(item, recommendations)
