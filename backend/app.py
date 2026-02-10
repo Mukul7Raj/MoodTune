@@ -31,7 +31,15 @@ app = Flask(__name__)
 app.config.from_object(Config)
 # CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"], supports_credentials=True)
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-CORS(app, origins=[frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"], supports_credentials=True)
+# Explicitly add the Vercel URL to avoid Env Var mistakes
+allowed_origins = [
+    frontend_url,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://moodtune-silk.vercel.app",
+    "https://moodtune-silk.vercel.app/"
+]
+CORS(app, origins=allowed_origins, supports_credentials=True)
 
 db.init_app(app)
 jwt = JWTManager(app)
@@ -858,4 +866,1511 @@ def get_song_history():
 @jwt_required()
 def get_all_playlists():
     user_id = get_jwt_identity()
-    playlists = Playlist.q
+    playlists = Playlist.query.filter_by(user_id=user_id).all()
+    return jsonify([
+        {"playlistId": p.id, "name": p.name, "description": p.description, "createdAt": p.created_at.isoformat()}
+        for p in playlists
+    ]), 200
+
+
+@app.route('/api/public/trending-songs', methods=['GET'])
+def get_public_trending_songs():
+    """Get trending/popular songs without authentication - ALWAYS returns exactly 10 items"""
+    language = request.args.get("language", "English")
+    all_tracks = []
+    seen_track_ids = set()
+    
+    # Get Spotify client credentials token
+    spotify_token = get_spotify_token()
+    
+    # Strategy 1: Try multiple popular search queries (fastest and most reliable)
+    if spotify_token:
+        search_queries = []
+        if language == "Global":
+            search_queries = ["top hits", "popular songs", "trending", "chart hits", "viral"]
+        elif language == "Hindi":
+            search_queries = ["bollywood hits", "hindi top", "hindi popular", "bollywood chart", "hindi trending"]
+        elif language == "English":
+            search_queries = ["top songs", "pop hits", "popular music", "chart top", "trending songs"]
+        else:
+            search_queries = [f"{language} hits", f"{language} top", f"{language} popular"]
+        
+        for query in search_queries:
+            if len(all_tracks) >= 10:
+                break
+            try:
+                spotify_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(query)}&type=track&limit=20",
+                    headers={"Authorization": f"Bearer {spotify_token}"},
+                    timeout=3
+                )
+                if spotify_resp.status_code == 200:
+                    tracks = spotify_resp.json().get("tracks", {}).get("items", [])
+                    for track in tracks:
+                        if len(all_tracks) >= 10:
+                            break
+                        track_id = track.get("id")
+                        if not track_id or track_id in seen_track_ids:
+                            continue
+                        seen_track_ids.add(track_id)
+                        
+                        album = track.get("album", {})
+                        images = album.get("images", [])
+                        image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if images else "/images/song-1.png")
+                        artists = track.get("artists", [])
+                        artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                        
+                        all_tracks.append({
+                            "id": track_id,
+                            "title": track.get("name"),
+                            "subtitle": artist_name,
+                            "imageUrl": image_url,
+                            "album": album.get("name"),
+                            "artist": artist_name,
+                            "spotifyId": track_id,
+                            "spotifyUri": track.get("uri"),
+                            "spotifyUrl": f"https://open.spotify.com/track/{track_id}",
+                            "source": "Spotify"
+                        })
+            except Exception as e:
+                print(f"Error with search query '{query}': {e}")
+                continue
+    
+    # Spotify-only: no JioSaavn or static defaults.
+    return jsonify(all_tracks[:10]), 200
+
+
+@app.route('/api/public/industry-songs', methods=['GET'])
+def get_public_industry_songs():
+    """Get industry/popular songs for Industry section - ALWAYS returns exactly 10 items, different from trending"""
+    language = request.args.get("language", "English")
+    # Get exclude IDs from query parameter (comma-separated list of trending song IDs)
+    exclude_ids_param = request.args.get("exclude_ids", "")
+    exclude_ids = set(exclude_ids_param.split(",")) if exclude_ids_param else set()
+    
+    all_tracks = []
+    seen_track_ids = set(exclude_ids)  # Start with excluded IDs to avoid duplicates
+    
+    # Get Spotify client credentials token
+    spotify_token = get_spotify_token()
+    
+    # Strategy 1: Use different search queries than trending songs (industry-focused)
+    if spotify_token:
+        search_queries = []
+        if language == "Global":
+            search_queries = ["chart hits", "viral songs", "trending now", "popular music", "top charts", "new releases", "latest hits"]
+        elif language == "Hindi":
+            search_queries = ["hindi chart", "bollywood chart", "indian hits", "hindi trending", "bollywood viral", "latest hindi", "new bollywood"]
+        elif language == "English":
+            search_queries = ["chart top", "viral hits", "trending music", "popular chart", "top music", "new releases", "latest songs"]
+        else:
+            search_queries = [f"{language} chart", f"{language} viral", f"{language} trending", f"latest {language}", f"new {language}"]
+        
+        for query in search_queries:
+            if len(all_tracks) >= 10:
+                break
+            try:
+                spotify_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(query)}&type=track&limit=20",
+                    headers={"Authorization": f"Bearer {spotify_token}"},
+                    timeout=3
+                )
+                if spotify_resp.status_code == 200:
+                    tracks = spotify_resp.json().get("tracks", {}).get("items", [])
+                    for track in tracks:
+                        if len(all_tracks) >= 10:
+                            break
+                        track_id = track.get("id")
+                        if not track_id or track_id in seen_track_ids:
+                            continue
+                        seen_track_ids.add(track_id)
+                        
+                        album = track.get("album", {})
+                        images = album.get("images", [])
+                        image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if images else "/images/song-1.png")
+                        artists = track.get("artists", [])
+                        artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                        
+                        all_tracks.append({
+                            "id": track_id,
+                            "title": track.get("name"),
+                            "subtitle": artist_name,
+                            "imageUrl": image_url,
+                            "album": album.get("name"),
+                            "artist": artist_name,
+                            "spotifyId": track_id,
+                            "spotifyUri": track.get("uri"),
+                            "spotifyUrl": f"https://open.spotify.com/track/{track_id}",
+                            "source": "Spotify"
+                        })
+            except Exception as e:
+                print(f"Error with industry search query '{query}': {e}")
+                continue
+    
+    # Spotify-only: no JioSaavn or static defaults.
+    return jsonify(all_tracks[:10]), 200
+
+
+@app.route('/api/public/featured-playlists', methods=['GET'])
+def get_public_featured_playlists():
+    """Get featured playlists without authentication - ALWAYS returns exactly 2 items"""
+    language = request.args.get("language", "English")
+    playlists_data = []
+    seen_playlist_ids = set()
+    
+    spotify_token = get_spotify_token()
+    
+    # Strategy 1: Get featured playlists directly (most reliable)
+    if spotify_token:
+        try:
+            featured_resp = requests.get(
+                "https://api.spotify.com/v1/browse/featured-playlists?limit=20",
+                headers={"Authorization": f"Bearer {spotify_token}"},
+                timeout=3
+            )
+            if featured_resp.status_code == 200:
+                featured = featured_resp.json().get("playlists", {}).get("items", [])
+                for playlist in featured:
+                    if len(playlists_data) >= 2:
+                        break
+                    playlist_id = playlist.get("id")
+                    if not playlist_id or playlist_id in seen_playlist_ids:
+                        continue
+                    seen_playlist_ids.add(playlist_id)
+                    
+                    images = playlist.get("images", [])
+                    image_url = images[0].get("url") if images else "/images/playlist-1.png"
+                    description = playlist.get("description", "")
+                    if description:
+                        description = description[:60]
+                    else:
+                        tracks_total = playlist.get("tracks", {}).get("total", 0)
+                        description = f"{tracks_total} tracks"
+                    
+                    playlists_data.append({
+                        "id": playlist_id,
+                        "title": playlist.get("name"),
+                        "subtitle": description,
+                        "imageUrl": image_url,
+                        "spotifyId": playlist_id,
+                        "genre": "Featured"
+                    })
+        except Exception as e:
+            print(f"Error fetching featured playlists: {e}")
+    
+    # Strategy 2: Search for popular playlists if featured didn't return enough
+    if len(playlists_data) < 2 and spotify_token:
+        popular_playlist_queries = {
+            "Global": ["top hits", "global top", "popular playlist", "trending playlist"],
+            "Hindi": ["bollywood top", "hindi top", "bollywood playlist", "hindi playlist"],
+            "English": ["top hits", "usa top", "popular playlist", "trending playlist"]
+        }
+        
+        queries = popular_playlist_queries.get(language, popular_playlist_queries["Global"])
+        
+        for query in queries:
+            if len(playlists_data) >= 2:
+                break
+            try:
+                search_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(query)}&type=playlist&limit=10",
+                    headers={"Authorization": f"Bearer {spotify_token}"},
+                    timeout=3
+                )
+                if search_resp.status_code == 200:
+                    playlists = search_resp.json().get("playlists", {}).get("items", [])
+                    for playlist in playlists:
+                        if len(playlists_data) >= 2:
+                            break
+                        playlist_id = playlist.get("id")
+                        if not playlist_id or playlist_id in seen_playlist_ids:
+                            continue
+                        seen_playlist_ids.add(playlist_id)
+                        
+                        images = playlist.get("images", [])
+                        image_url = images[0].get("url") if images else "/images/playlist-1.png"
+                        tracks_total = playlist.get("tracks", {}).get("total", 0)
+                        description = f"{tracks_total} tracks"
+                        
+                        playlists_data.append({
+                            "id": playlist_id,
+                            "title": playlist.get("name"),
+                            "subtitle": description,
+                            "imageUrl": image_url,
+                            "spotifyId": playlist_id,
+                            "genre": "Popular"
+                        })
+            except Exception as e:
+                print(f"Error searching for playlists with query '{query}': {e}")
+                continue
+    
+    # Spotify-only: no static defaults.
+    return jsonify(playlists_data[:2]), 200
+
+
+@app.route('/api/public/artists', methods=['GET'])
+def get_public_artists():
+    """Get popular artists without authentication - ALWAYS returns exactly 10 items"""
+    language = request.args.get("language", "English")
+    artists_data = []
+    seen_artist_ids = set()
+    
+    spotify_token = get_spotify_token()
+    
+    # Strategy 1: Try multiple search queries to get popular artists
+    if spotify_token:
+        search_queries = []
+        if language == "Global":
+            search_queries = ["top artist", "popular artist", "trending artist", "famous artist", "best artist"]
+        elif language == "Hindi":
+            search_queries = ["bollywood top artist", "hindi singer", "bollywood singer", "hindi artist", "indian singer"]
+        elif language == "English":
+            search_queries = ["top artist", "popular singer", "famous artist", "best singer", "trending artist"]
+        else:
+            search_queries = [f"{language} artist", f"{language} singer", f"{language} top artist"]
+        
+        for query in search_queries:
+            if len(artists_data) >= 10:
+                break
+            try:
+                search_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(query)}&type=artist&limit=20",
+                    headers={"Authorization": f"Bearer {spotify_token}"},
+                    timeout=3
+                )
+                if search_resp.status_code == 200:
+                    artists = search_resp.json().get("artists", {}).get("items", [])
+                    # Sort by followers to get most popular
+                    artists_sorted = sorted(artists, key=lambda x: x.get('followers', {}).get('total', 0), reverse=True)
+                    for artist in artists_sorted:
+                        if len(artists_data) >= 10:
+                            break
+                        artist_id = artist.get("id")
+                        if not artist_id or artist_id in seen_artist_ids:
+                            continue
+                        seen_artist_ids.add(artist_id)
+                        
+                        images = artist.get("images", [])
+                        image_url = images[0].get("url") if images else f"/images/artist-{artist.get('name', '').lower().replace(' ', '-')}-circle.png"
+                        artists_data.append({
+                            "id": artist_id,
+                            "title": artist.get("name"),
+                            "subtitle": f"{artist.get('followers', {}).get('total', 0):,} followers",
+                            "imageUrl": image_url,
+                            "spotifyId": artist_id
+                        })
+            except Exception as e:
+                print(f"Error with artist search query '{query}': {e}")
+                continue
+    
+    # Spotify-only: no static defaults.
+    return jsonify(artists_data[:10]), 200
+
+
+@app.route('/api/featured-playlists', methods=['GET'])
+@jwt_required()
+def get_featured_playlists():
+    """Get featured playlists based on various genres"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Get language preference from query param or user settings
+    language = request.args.get("language")
+    if not language and user:
+        language = user.language or "English"
+    
+    playlists_data = []
+    
+    # Filter genres based on language preference
+    if language == "Global":
+        # Global: Mix of popular genres from around the world
+        genres = [
+            {"name": "Global Pop", "query": "pop hits"},
+            {"name": "Global Rock", "query": "rock classics"},
+            {"name": "Hip Hop", "query": "hip hop"},
+            {"name": "Electronic", "query": "electronic dance"},
+            {"name": "Bollywood", "query": "bollywood hits"},
+            {"name": "K-Pop", "query": "k-pop"},
+            {"name": "Latin", "query": "latin music"},
+            {"name": "R&B", "query": "r&b soul"},
+            {"name": "Reggae", "query": "reggae"},
+            {"name": "Indie", "query": "indie music"},
+            {"name": "Jazz", "query": "jazz"},
+            {"name": "Classical", "query": "classical music"}
+        ]
+    elif language == "Hindi":
+        genres = [
+            {"name": "Bollywood", "query": "bollywood hits"},
+            {"name": "Hindi Pop", "query": "hindi pop"},
+            {"name": "Hindi Rock", "query": "hindi rock"},
+            {"name": "Devotional", "query": "hindi devotional"},
+            {"name": "Ghazal", "query": "hindi ghazal"},
+            {"name": "Classical", "query": "hindi classical"}
+        ]
+    elif language == "Bengali":
+        genres = [
+            {"name": "Bengali", "query": "bengali music"},
+            {"name": "Rabindra Sangeet", "query": "rabindra sangeet"},
+            {"name": "Modern Bengali", "query": "modern bengali"}
+        ]
+    elif language == "Marathi":
+        genres = [
+            {"name": "Marathi", "query": "marathi music"},
+            {"name": "Lavani", "query": "marathi lavani"},
+            {"name": "Bhakti", "query": "marathi bhakti"}
+        ]
+    elif language == "Telugu":
+        genres = [
+            {"name": "Telugu", "query": "telugu music"},
+            {"name": "Tollywood", "query": "tollywood hits"},
+            {"name": "Carnatic", "query": "telugu carnatic"}
+        ]
+    elif language == "Tamil":
+        genres = [
+            {"name": "Tamil", "query": "tamil music"},
+            {"name": "Kollywood", "query": "kollywood hits"},
+            {"name": "Carnatic", "query": "tamil carnatic"}
+        ]
+    else:
+        # Default genres for English
+        genres = [
+            {"name": "Pop", "query": "pop hits"},
+            {"name": "Rock", "query": "rock classics"},
+            {"name": "Hip Hop", "query": "hip hop"},
+            {"name": "Electronic", "query": "electronic dance"},
+            {"name": "Jazz", "query": "jazz"},
+            {"name": "Classical", "query": "classical music"},
+            {"name": "Country", "query": "country music"},
+            {"name": "R&B", "query": "r&b soul"},
+            {"name": "Reggae", "query": "reggae"},
+            {"name": "Latin", "query": "latin music"},
+            {"name": "Bollywood", "query": "bollywood hits"},
+            {"name": "Indie", "query": "indie music"}
+        ]
+    
+    # If user has Spotify, fetch genre-based playlists - only Spotify, no fallbacks
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            
+            # Fetch featured playlists from Spotify's browse API
+            try:
+                spotify_resp = requests.get(
+                    "https://api.spotify.com/v1/browse/featured-playlists?limit=15",
+                    headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                )
+                
+                if spotify_resp.status_code == 200:
+                    featured = spotify_resp.json().get("playlists", {}).get("items", [])
+                    for playlist in featured:
+                        if len(playlists_data) >= 15:
+                            break
+                        images = playlist.get("images", [])
+                        image_url = images[0].get("url") if images else None
+                        playlists_data.append({
+                            "id": playlist.get("id"),
+                            "title": playlist.get("name"),
+                            "subtitle": playlist.get("description", "")[:50] if playlist.get("description") else f"{playlist.get('tracks', {}).get('total', 0)} tracks",
+                            "imageUrl": image_url,
+                            "spotifyId": playlist.get("id"),
+                            "genre": "Featured"
+                        })
+                else:
+                    print(f"Spotify featured playlists API returned status {spotify_resp.status_code}: {spotify_resp.text}")
+            except Exception as e:
+                print(f"Error fetching featured playlists: {e}")
+                # Continue to genre search even if featured fails
+            
+            # Also search for genre-specific playlists if we need more
+            if len(playlists_data) < 15:
+                # Calculate how many we need
+                needed = 15 - len(playlists_data)
+                for genre in genres[:15]:  # Limit to 15 total
+                    if len(playlists_data) >= 15:
+                        break
+                    try:
+                        genre_resp = requests.get(
+                            f"https://api.spotify.com/v1/search?q={urllib.parse.quote(genre['query'])}&type=playlist&limit=3",
+                            headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                        )
+                        if genre_resp.status_code == 200:
+                            playlists = genre_resp.json().get("playlists", {}).get("items", [])
+                            if playlists:
+                                # Add multiple playlists from this genre if we still need more
+                                for playlist in playlists:
+                                    if len(playlists_data) >= 15:
+                                        break
+                                    images = playlist.get("images", [])
+                                    image_url = images[0].get("url") if images else None
+                                    # Check if already added
+                                    if not any(p.get("spotifyId") == playlist.get("id") for p in playlists_data):
+                                        playlists_data.append({
+                                            "id": playlist.get("id"),
+                                            "title": playlist.get("name"),
+                                            "subtitle": f"{genre['name']} • {playlist.get('tracks', {}).get('total', 0)} tracks",
+                                            "imageUrl": image_url,
+                                            "spotifyId": playlist.get("id"),
+                                            "genre": genre["name"]
+                                        })
+                    except Exception as e:
+                        print(f"Error fetching {genre['name']} playlists: {e}")
+                        continue
+            
+            # Return playlists (even if empty, but at least we tried)
+            return jsonify(playlists_data[:15]), 200
+                    
+        except Exception as e:
+            print(f"Error fetching Spotify playlists: {e}")
+            import traceback
+            traceback.print_exc()
+            # When Spotify is linked but fails, return empty array (no fallback)
+            return jsonify([]), 200
+    
+    # Use client credentials token when Spotify is not linked (same as featured-playlists already does)
+    spotify_token = get_spotify_token()
+    if not spotify_token:
+        return jsonify([]), 200
+    
+    try:
+        # Try to get playlists using client credentials token
+        # Fetch featured playlists from Spotify's browse API
+        try:
+            spotify_resp = requests.get(
+                "https://api.spotify.com/v1/browse/featured-playlists?limit=15",
+                headers={"Authorization": f"Bearer {spotify_token}"}
+            )
+            
+            if spotify_resp.status_code == 200:
+                featured = spotify_resp.json().get("playlists", {}).get("items", [])
+                for playlist in featured:
+                    if len(playlists_data) >= 15:
+                        break
+                    images = playlist.get("images", [])
+                    image_url = images[0].get("url") if images else None
+                    playlists_data.append({
+                        "id": playlist.get("id"),
+                        "title": playlist.get("name"),
+                        "subtitle": playlist.get("description", "")[:50] if playlist.get("description") else f"{playlist.get('tracks', {}).get('total', 0)} tracks",
+                        "imageUrl": image_url,
+                        "spotifyId": playlist.get("id"),
+                        "genre": "Featured"
+                    })
+            else:
+                print(f"Spotify featured playlists API returned status {spotify_resp.status_code}: {spotify_resp.text}")
+        except Exception as e:
+            print(f"Error fetching featured playlists: {e}")
+            # Continue to genre search even if featured fails
+        
+        # Also search for genre-specific playlists if we need more
+        if len(playlists_data) < 15:
+            for genre in genres[:15]:  # Limit to 15 total
+                if len(playlists_data) >= 15:
+                    break
+                try:
+                    genre_resp = requests.get(
+                        f"https://api.spotify.com/v1/search?q={urllib.parse.quote(genre['query'])}&type=playlist&limit=3",
+                        headers={"Authorization": f"Bearer {spotify_token}"}
+                    )
+                    if genre_resp.status_code == 200:
+                        playlists = genre_resp.json().get("playlists", {}).get("items", [])
+                        if playlists:
+                            # Add multiple playlists from this genre if we still need more
+                            for playlist in playlists:
+                                if len(playlists_data) >= 15:
+                                    break
+                                images = playlist.get("images", [])
+                                image_url = images[0].get("url") if images else None
+                                # Check if already added
+                                if not any(p.get("spotifyId") == playlist.get("id") for p in playlists_data):
+                                    playlists_data.append({
+                                        "id": playlist.get("id"),
+                                        "title": playlist.get("name"),
+                                        "subtitle": f"{genre['name']} • {playlist.get('tracks', {}).get('total', 0)} tracks",
+                                        "imageUrl": image_url,
+                                        "spotifyId": playlist.get("id"),
+                                        "genre": genre["name"]
+                                    })
+                except Exception as e:
+                    print(f"Error fetching {genre['name']} playlists: {e}")
+                    continue
+        
+        # Return playlists (even if empty, but at least we tried)
+        return jsonify(playlists_data[:15]), 200
+    except Exception as e:
+        print(f"Error fetching Spotify playlists with client credentials: {e}")
+        return jsonify([]), 200
+
+
+@app.route('/api/trending-songs', methods=['GET'])
+@jwt_required()
+def get_trending_songs():
+    """Get trending/popular songs"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Get language preference from query param or user settings
+    language = request.args.get("language")
+    if not language and user:
+        language = user.language or "English"
+    
+    songs_data = []
+    
+    # Try Spotify first - if linked, only use Spotify (no fallbacks)
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            # Search for trending songs in the selected language
+            if language == "Global":
+                # For Global, get new releases (globally popular)
+                spotify_resp = requests.get(
+                    "https://api.spotify.com/v1/browse/new-releases?limit=15",
+                    headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                )
+            elif language and language != "English":
+                # Map language to search query
+                lang_queries = {
+                    "Hindi": "hindi bollywood",
+                    "Bengali": "bengali",
+                    "Marathi": "marathi",
+                    "Telugu": "telugu",
+                    "Tamil": "tamil"
+                }
+                search_query = lang_queries.get(language, language.lower())
+                spotify_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(search_query)}&type=track&limit=15",
+                    headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                )
+            else:
+                # Get featured playlists or new releases for English/default
+                spotify_resp = requests.get(
+                    "https://api.spotify.com/v1/browse/new-releases?limit=15",
+                    headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                )
+            if spotify_resp.status_code == 200:
+                if language == "Global" or (language and language != "English"):
+                    if language == "Global":
+                        # For Global, use new releases (already fetched above)
+                        albums = spotify_resp.json().get("albums", {}).get("items", [])
+                        for album in albums:
+                            images = album.get("images", [])
+                            image_url = images[0].get("url") if images else None
+                            artists = album.get("artists", [])
+                            artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                            album_id = album.get("id")
+                            
+                            # Use album URL directly
+                            spotify_uri = f"spotify:album:{album_id}"
+                            spotify_url = f"https://open.spotify.com/album/{album_id}"
+                            
+                            songs_data.append({
+                                "id": album_id,
+                                "title": album.get("name"),
+                                "subtitle": artist_name,
+                                "imageUrl": image_url,
+                                "album": album.get("name"),
+                                "artist": artist_name,
+                                "spotifyId": album_id,
+                                "spotifyUri": spotify_uri,
+                                "spotifyUrl": spotify_url
+                            })
+                    else:
+                        # Handle track search results for specific languages
+                        tracks = spotify_resp.json().get("tracks", {}).get("items", [])
+                        seen_track_ids = set()
+                        for track in tracks:
+                            track_id = track.get("id")
+                            if track_id in seen_track_ids:
+                                continue
+                            seen_track_ids.add(track_id)
+                            
+                            album = track.get("album", {})
+                            images = album.get("images", [])
+                            image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if images else None)
+                            artists = track.get("artists", [])
+                            artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                            
+                            songs_data.append({
+                                "id": track_id,
+                                "title": track.get("name"),
+                                "subtitle": artist_name,
+                                "imageUrl": image_url,
+                                "album": album.get("name"),
+                                "artist": artist_name,
+                                "spotifyId": track_id,
+                                "spotifyUri": track.get("uri"),
+                                "spotifyUrl": f"https://open.spotify.com/track/{track_id}"
+                            })
+                else:
+                    # Handle album results (new releases) for English
+                    albums = spotify_resp.json().get("albums", {}).get("items", [])
+                    for album in albums:
+                        images = album.get("images", [])
+                        image_url = images[0].get("url") if images else None
+                        artists = album.get("artists", [])
+                        artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                        album_id = album.get("id")
+                        
+                        # Use album URL directly (faster, and users can see all tracks in the album)
+                        spotify_uri = f"spotify:album:{album_id}"
+                        spotify_url = f"https://open.spotify.com/album/{album_id}"
+                        
+                        songs_data.append({
+                            "id": album_id,
+                            "title": album.get("name"),
+                            "subtitle": artist_name,
+                            "imageUrl": image_url,
+                            "album": album.get("name"),
+                            "artist": artist_name,
+                            "spotifyId": album_id,
+                            "spotifyUri": spotify_uri,
+                            "spotifyUrl": spotify_url
+                        })
+            # Return only 15 items max when Spotify is linked (no fallbacks)
+            return jsonify(songs_data[:15]), 200
+        except Exception as e:
+            print(f"Error fetching Spotify trending: {e}")
+            import traceback
+            traceback.print_exc()
+            # When Spotify is linked but fails, return empty array (no fallback)
+            return jsonify([]), 200
+    
+    # Use client credentials token when Spotify is not linked
+    spotify_token = get_spotify_token()
+    if not spotify_token:
+        return jsonify([]), 200
+    
+    try:
+        # Try to get trending songs using client credentials token
+        # Search for trending songs in the selected language
+        if language == "Global":
+            # For Global, get new releases (globally popular)
+            spotify_resp = requests.get(
+                "https://api.spotify.com/v1/browse/new-releases?limit=15",
+                headers={"Authorization": f"Bearer {spotify_token}"}
+            )
+        elif language and language != "English":
+            # Map language to search query
+            lang_queries = {
+                "Hindi": "hindi bollywood",
+                "Bengali": "bengali",
+                "Marathi": "marathi",
+                "Telugu": "telugu",
+                "Tamil": "tamil"
+            }
+            search_query = lang_queries.get(language, language.lower())
+            spotify_resp = requests.get(
+                f"https://api.spotify.com/v1/search?q={urllib.parse.quote(search_query)}&type=track&limit=15",
+                headers={"Authorization": f"Bearer {spotify_token}"}
+            )
+        else:
+            # Get new releases for English/default
+            spotify_resp = requests.get(
+                "https://api.spotify.com/v1/browse/new-releases?limit=15",
+                headers={"Authorization": f"Bearer {spotify_token}"}
+            )
+        if spotify_resp.status_code == 200:
+            if language == "Global":
+                # For Global, use new releases (already fetched above)
+                albums = spotify_resp.json().get("albums", {}).get("items", [])
+                for album in albums:
+                    images = album.get("images", [])
+                    image_url = images[0].get("url") if images else None
+                    artists = album.get("artists", [])
+                    artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                    album_id = album.get("id")
+                    
+                    # Use album URL directly
+                    spotify_uri = f"spotify:album:{album_id}"
+                    spotify_url = f"https://open.spotify.com/album/{album_id}"
+                    
+                    songs_data.append({
+                        "id": album_id,
+                        "title": album.get("name"),
+                        "subtitle": artist_name,
+                        "imageUrl": image_url,
+                        "album": album.get("name"),
+                        "artist": artist_name,
+                        "spotifyId": album_id,
+                        "spotifyUri": spotify_uri,
+                        "spotifyUrl": spotify_url
+                    })
+            elif language and language != "English":
+                # Handle track results for language-specific searches
+                tracks = spotify_resp.json().get("tracks", {}).get("items", [])
+                for track in tracks:
+                    track_id = track.get("id")
+                    album = track.get("album", {})
+                    images = album.get("images", [])
+                    image_url = images[0].get("url") if images else None
+                    artists = track.get("artists", [])
+                    artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                    
+                    songs_data.append({
+                        "id": track_id,
+                        "title": track.get("name"),
+                        "subtitle": artist_name,
+                        "imageUrl": image_url,
+                        "album": album.get("name"),
+                        "artist": artist_name,
+                        "spotifyId": track_id,
+                        "spotifyUri": track.get("uri"),
+                        "spotifyUrl": f"https://open.spotify.com/track/{track_id}"
+                    })
+            else:
+                # Handle album results (new releases) for English
+                albums = spotify_resp.json().get("albums", {}).get("items", [])
+                for album in albums:
+                    images = album.get("images", [])
+                    image_url = images[0].get("url") if images else None
+                    artists = album.get("artists", [])
+                    artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                    album_id = album.get("id")
+                    
+                    # Use album URL directly
+                    spotify_uri = f"spotify:album:{album_id}"
+                    spotify_url = f"https://open.spotify.com/album/{album_id}"
+                    
+                    songs_data.append({
+                        "id": album_id,
+                        "title": album.get("name"),
+                        "subtitle": artist_name,
+                        "imageUrl": image_url,
+                        "album": album.get("name"),
+                        "artist": artist_name,
+                        "spotifyId": album_id,
+                        "spotifyUri": spotify_uri,
+                        "spotifyUrl": spotify_url
+                    })
+        # Return only 15 items max
+        return jsonify(songs_data[:15]), 200
+    except Exception as e:
+        print(f"Error fetching Spotify trending songs with client credentials: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify([]), 200
+
+
+@app.route('/api/industry-songs', methods=['GET'])
+@jwt_required()
+def get_industry_songs():
+    """Get industry/popular songs for Industry section - different from trending songs"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Get language preference from query param or user settings
+    language = request.args.get("language")
+    if not language and user:
+        language = user.language or "English"
+    
+    # Get exclude IDs from query parameter (comma-separated list of trending song IDs)
+    exclude_ids_param = request.args.get("exclude_ids", "")
+    exclude_ids = set(exclude_ids_param.split(",")) if exclude_ids_param else set()
+    
+    songs_data = []
+    seen_track_ids = set(exclude_ids)  # Start with excluded IDs to avoid duplicates
+    
+    # If user has Spotify, fetch industry songs from Spotify - only Spotify, no fallbacks
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            
+            # Use different search queries than trending songs (industry-focused)
+            search_queries = []
+            if language == "Global":
+                search_queries = ["chart hits", "viral songs", "trending now", "popular music", "top charts", "new releases", "latest hits", "billboard top", "music charts"]
+            elif language == "Hindi":
+                search_queries = ["hindi chart", "bollywood chart", "indian hits", "hindi trending", "bollywood viral", "latest hindi", "new bollywood", "indian top songs"]
+            elif language == "English":
+                search_queries = ["chart top", "viral hits", "trending music", "popular chart", "top music", "new releases", "latest songs", "billboard hot", "top charts"]
+            elif language == "Bengali":
+                search_queries = ["bengali chart", "bengali viral", "bengali trending", "latest bengali", "new bengali"]
+            elif language == "Marathi":
+                search_queries = ["marathi chart", "marathi viral", "marathi trending", "latest marathi", "new marathi"]
+            elif language == "Telugu":
+                search_queries = ["telugu chart", "telugu viral", "telugu trending", "latest telugu", "new telugu"]
+            elif language == "Tamil":
+                search_queries = ["tamil chart", "tamil viral", "tamil trending", "latest tamil", "new tamil"]
+            else:
+                search_queries = [f"{language} chart", f"{language} viral", f"{language} trending", f"latest {language}", f"new {language}"]
+            
+            for query in search_queries:
+                if len(songs_data) >= 15:
+                    break
+                try:
+                    spotify_resp = requests.get(
+                        f"https://api.spotify.com/v1/search?q={urllib.parse.quote(query)}&type=track&limit=20",
+                        headers={"Authorization": f"Bearer {user.spotify_access_token}"},
+                        timeout=3
+                    )
+                    if spotify_resp.status_code == 200:
+                        tracks = spotify_resp.json().get("tracks", {}).get("items", [])
+                        for track in tracks:
+                            if len(songs_data) >= 15:
+                                break
+                            track_id = track.get("id")
+                            if not track_id or track_id in seen_track_ids:
+                                continue
+                            seen_track_ids.add(track_id)
+                            
+                            album = track.get("album", {})
+                            images = album.get("images", [])
+                            image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if images else None)
+                            artists = track.get("artists", [])
+                            artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                            
+                            songs_data.append({
+                                "id": track_id,
+                                "title": track.get("name"),
+                                "subtitle": artist_name,
+                                "imageUrl": image_url,
+                                "album": album.get("name"),
+                                "artist": artist_name,
+                                "spotifyId": track_id,
+                                "spotifyUri": track.get("uri"),
+                                "spotifyUrl": f"https://open.spotify.com/track/{track_id}",
+                                "source": "Spotify"
+                            })
+                except Exception as e:
+                    print(f"Error with industry search query '{query}': {e}")
+                    continue
+            
+            # Return only 15 items max when Spotify is linked (no fallbacks)
+            return jsonify(songs_data[:15]), 200
+        except Exception as e:
+            print(f"Error fetching Spotify industry songs: {e}")
+            import traceback
+            traceback.print_exc()
+            # When Spotify is linked but fails, return empty array (no fallback)
+            return jsonify([]), 200
+    
+    # Fallback to public industry-songs API - only when Spotify NOT linked
+    # Use public API which uses client credentials
+    spotify_token = get_spotify_token()
+    
+    if spotify_token:
+        search_queries = []
+        if language == "Global":
+            search_queries = ["chart hits", "viral songs", "trending now", "popular music", "top charts", "new releases", "latest hits"]
+        elif language == "Hindi":
+            search_queries = ["hindi chart", "bollywood chart", "indian hits", "hindi trending", "bollywood viral", "latest hindi", "new bollywood"]
+        elif language == "English":
+            search_queries = ["chart top", "viral hits", "trending music", "popular chart", "top music", "new releases", "latest songs"]
+        else:
+            search_queries = [f"{language} chart", f"{language} viral", f"{language} trending", f"latest {language}", f"new {language}"]
+        
+        for query in search_queries:
+            if len(songs_data) >= 15:
+                break
+            try:
+                spotify_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(query)}&type=track&limit=20",
+                    headers={"Authorization": f"Bearer {spotify_token}"},
+                    timeout=3
+                )
+                if spotify_resp.status_code == 200:
+                    tracks = spotify_resp.json().get("tracks", {}).get("items", [])
+                    for track in tracks:
+                        if len(songs_data) >= 15:
+                            break
+                        track_id = track.get("id")
+                        if not track_id or track_id in seen_track_ids:
+                            continue
+                        seen_track_ids.add(track_id)
+                        
+                        album = track.get("album", {})
+                        images = album.get("images", [])
+                        image_url = images[1].get("url") if len(images) > 1 else (images[0].get("url") if images else "/images/song-1.png")
+                        artists = track.get("artists", [])
+                        artist_name = ", ".join([a.get("name") for a in artists]) if artists else "Unknown"
+                        
+                        songs_data.append({
+                            "id": track_id,
+                            "title": track.get("name"),
+                            "subtitle": artist_name,
+                            "imageUrl": image_url,
+                            "album": album.get("name"),
+                            "artist": artist_name,
+                            "spotifyId": track_id,
+                            "spotifyUri": track.get("uri"),
+                            "spotifyUrl": f"https://open.spotify.com/track/{track_id}",
+                            "source": "Spotify"
+                        })
+            except Exception as e:
+                print(f"Error with industry search query '{query}': {e}")
+                continue
+    
+    # Return only 15 items max
+    return jsonify(songs_data[:15]), 200
+
+
+@app.route('/api/artists', methods=['GET'])
+@jwt_required()
+def get_artists():
+    """Get popular artists"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    # Get language preference from query param or user settings
+    language = request.args.get("language")
+    if not language and user:
+        language = user.language or "English"
+    
+    # Log for debugging
+    print(f"[Artists API] Language received: {language}, Query param: {request.args.get('language')}, User language: {user.language if user else 'N/A'}")
+    
+    artists_data = []
+    seen_artist_ids = set()  # Track unique artist IDs
+    seen_artist_names = set()  # Track unique artist names (case-insensitive)
+    
+    # Try Spotify first
+    if user and user.spotify_access_token:
+        try:
+            ensure_valid_spotify_token(user)
+            # Search for popular artists based on language
+            if language == "Global":
+                # Global: Mix of popular artists from different languages and regions
+                popular_artists = [
+                    "Ed Sheeran", "Taylor Swift", "The Weeknd", "Drake", "Adele",
+                    "Billie Eilish", "Post Malone", "Dua Lipa", "Justin Bieber",
+                    "Ariana Grande", "Bruno Mars", "Coldplay", "Imagine Dragons",
+                    "Arijit Singh", "Shreya Ghoshal", "A.R. Rahman", "The Weeknd",
+                    "BTS", "Bad Bunny", "J Balvin", "Shakira", "Eminem",
+                    "Kanye West", "Kendrick Lamar", "Lana Del Rey", "Rihanna",
+                    "Beyoncé", "The Beatles", "Queen", "Drake"
+                ]
+            elif language == "Hindi":
+                popular_artists = [
+                    "Arijit Singh", "Sonu Nigam", "Shreya Ghoshal", "Atif Aslam",
+                    "Kumar Sanu", "Udit Narayan", "Alka Yagnik", "Kishore Kumar",
+                    "Lata Mangeshkar", "Mohammed Rafi", "A.R. Rahman", "Vishal-Shekhar"
+                ]
+            elif language == "Bengali":
+                popular_artists = [
+                    "Anupam Roy", "Rupam Islam", "Nachiketa", "Srikanto Acharya",
+                    "Lopamudra Mitra", "Shreya Ghoshal", "Arijit Singh"
+                ]
+            elif language == "Marathi":
+                popular_artists = [
+                    "Ajay-Atul", "Shankar Mahadevan", "Sonu Nigam", "Shreya Ghoshal"
+                ]
+            elif language == "Telugu":
+                popular_artists = [
+                    "S.P. Balasubrahmanyam", "K.S. Chithra", "Sid Sriram", "Anirudh Ravichander"
+                ]
+            elif language == "Tamil":
+                popular_artists = [
+                    "A.R. Rahman", "Ilaiyaraaja", "Anirudh Ravichander", "Yuvan Shankar Raja",
+                    "Sid Sriram", "Shreya Ghoshal"
+                ]
+            else:
+                # Default English/International artists
+                popular_artists = [
+                    "Ed Sheeran", "Taylor Swift", "The Weeknd", "Drake", "Adele",
+                    "Billie Eilish", "Post Malone", "Dua Lipa", "Justin Bieber",
+                    "Ariana Grande", "Bruno Mars", "Coldplay", "Imagine Dragons",
+                    "Eminem", "Kanye West", "Kendrick Lamar", "Lana Del Rey",
+                    "Rihanna", "Beyoncé", "The Beatles", "Queen"
+                ]
+            for artist_name in popular_artists:
+                if len(artists_data) >= 15:
+                    break
+                try:
+                    spotify_resp = requests.get(
+                        f"https://api.spotify.com/v1/search?q={urllib.parse.quote(artist_name)}&type=artist&limit=1",
+                        headers={"Authorization": f"Bearer {user.spotify_access_token}"}
+                    )
+                    if spotify_resp.status_code == 200:
+                        artists = spotify_resp.json().get("artists", {}).get("items", [])
+                        if artists:
+                            artist = artists[0]
+                            artist_id = artist.get("id")
+                            artist_name_lower = artist.get("name", "").lower().strip()
+                            
+                            # Skip if we've already seen this artist (by ID or name)
+                            if artist_id in seen_artist_ids or artist_name_lower in seen_artist_names:
+                                continue
+                            
+                            seen_artist_ids.add(artist_id)
+                            seen_artist_names.add(artist_name_lower)
+                            
+                            images = artist.get("images", [])
+                            image_url = images[0].get("url") if images else None
+                            artists_data.append({
+                                "id": artist_id,
+                                "title": artist.get("name"),
+                                "subtitle": f"{artist.get('followers', {}).get('total', 0)} followers",
+                                "imageUrl": image_url,
+                                "spotifyId": artist_id
+                            })
+                except Exception as e:
+                    print(f"Error fetching artist {artist_name}: {e}")
+                    continue
+            
+            # Return only 15 items max when Spotify is linked (no fallbacks)
+            return jsonify(artists_data[:15]), 200
+        except Exception as e:
+            print(f"Error fetching Spotify artists: {e}")
+            # When Spotify is linked but fails, return empty array (no fallback)
+            return jsonify([]), 200
+    
+    # Use client credentials token when Spotify is not linked
+    spotify_token = get_spotify_token()
+    if not spotify_token:
+        return jsonify([]), 200
+    
+    try:
+        # Try to get artists using client credentials token
+        # Search for popular artists based on language
+        if language == "Global":
+            # Global: Mix of popular artists from different languages and regions
+            popular_artists = [
+                "Ed Sheeran", "Taylor Swift", "The Weeknd", "Drake", "Adele",
+                "Billie Eilish", "Post Malone", "Dua Lipa", "Justin Bieber",
+                "Ariana Grande", "Bruno Mars", "Coldplay", "Imagine Dragons",
+                "Arijit Singh", "Shreya Ghoshal", "A.R. Rahman",
+                "BTS", "Bad Bunny", "J Balvin", "Shakira", "Eminem",
+                "Kanye West", "Kendrick Lamar", "Lana Del Rey", "Rihanna",
+                "Beyoncé", "The Beatles", "Queen"
+            ]
+        elif language == "Hindi":
+            popular_artists = [
+                "Arijit Singh", "Sonu Nigam", "Shreya Ghoshal", "Atif Aslam",
+                "Kumar Sanu", "Udit Narayan", "Alka Yagnik", "Kishore Kumar",
+                "Lata Mangeshkar", "Mohammed Rafi", "A.R. Rahman", "Vishal-Shekhar"
+            ]
+        elif language == "Bengali":
+            popular_artists = [
+                "Anupam Roy", "Rupam Islam", "Nachiketa", "Srikanto Acharya",
+                "Lopamudra Mitra", "Shreya Ghoshal", "Arijit Singh"
+            ]
+        elif language == "Marathi":
+            popular_artists = [
+                "Ajay-Atul", "Shankar Mahadevan", "Sonu Nigam", "Shreya Ghoshal"
+            ]
+        elif language == "Telugu":
+            popular_artists = [
+                "S.P. Balasubrahmanyam", "K.S. Chithra", "Sid Sriram", "Anirudh Ravichander"
+            ]
+        elif language == "Tamil":
+            popular_artists = [
+                "A.R. Rahman", "Ilaiyaraaja", "Anirudh Ravichander", "Yuvan Shankar Raja",
+                "Sid Sriram", "Shreya Ghoshal"
+            ]
+        else:
+            # Default English/International artists
+            popular_artists = [
+                "Ed Sheeran", "Taylor Swift", "The Weeknd", "Drake", "Adele",
+                "Billie Eilish", "Post Malone", "Dua Lipa", "Justin Bieber",
+                "Ariana Grande", "Bruno Mars", "Coldplay", "Imagine Dragons",
+                "Eminem", "Kanye West", "Kendrick Lamar", "Lana Del Rey",
+                "Rihanna", "Beyoncé", "The Beatles", "Queen"
+            ]
+        for artist_name in popular_artists:
+            if len(artists_data) >= 15:
+                break
+            try:
+                spotify_resp = requests.get(
+                    f"https://api.spotify.com/v1/search?q={urllib.parse.quote(artist_name)}&type=artist&limit=1",
+                    headers={"Authorization": f"Bearer {spotify_token}"}
+                )
+                if spotify_resp.status_code == 200:
+                    artists = spotify_resp.json().get("artists", {}).get("items", [])
+                    if artists:
+                        artist = artists[0]
+                        artist_id = artist.get("id")
+                        artist_name_lower = artist.get("name", "").lower().strip()
+                        
+                        # Skip if we've already seen this artist (by ID or name)
+                        if artist_id in seen_artist_ids or artist_name_lower in seen_artist_names:
+                            continue
+                        
+                        seen_artist_ids.add(artist_id)
+                        seen_artist_names.add(artist_name_lower)
+                        
+                        images = artist.get("images", [])
+                        image_url = images[0].get("url") if images else None
+                        artists_data.append({
+                            "id": artist_id,
+                            "title": artist.get("name"),
+                            "subtitle": f"{artist.get('followers', {}).get('total', 0)} followers",
+                            "imageUrl": image_url,
+                            "spotifyId": artist_id
+                        })
+            except Exception as e:
+                print(f"Error fetching artist {artist_name}: {e}")
+                continue
+        
+        # Return only 15 items max
+        return jsonify(artists_data[:15]), 200
+    except Exception as e:
+        print(f"Error fetching Spotify artists with client credentials: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify([]), 200
+
+
+@app.route('/api/playlists', methods=['POST'])
+@jwt_required()
+def create_playlist():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    name = data.get("name")
+    if not name:
+        return jsonify({"error": "Missing playlist name"}), 400
+
+    playlist = Playlist(user_id=user_id, name=name, description=data.get("description", ""))
+    db.session.add(playlist)
+    db.session.commit()
+    return jsonify({"message": "Playlist created", "playlistId": playlist.id}), 201
+
+
+# ======================================================
+# 5️⃣  Gestures & Voice Commands
+# ======================================================
+@app.route('/api/gestures/map', methods=['POST'])
+@jwt_required()
+def map_gesture_to_action():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    gesture, action = data.get("gestureName"), data.get("action")
+    if not gesture or not action:
+        return jsonify({"error": "Invalid gesture name or action"}), 400
+    db.session.add(GestureLog(user_id=user_id, gesture=f"{gesture}:{action}"))
+    db.session.commit()
+    return jsonify({"message": "Gesture mapped successfully"}), 200
+
+
+@app.route('/api/voice/command', methods=['POST'])
+@jwt_required()
+def process_voice_command():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    command = data.get("commandPhrase")
+    if not command:
+        return jsonify({"error": "Missing command phrase"}), 400
+
+    phrase_to_action = {
+        "play next song": "next_song",
+        "play previous song": "previous_song",
+        "pause song": "pause",
+        "play song": "play"
+    }
+    action = phrase_to_action.get(command.lower())
+    if not action:
+        return jsonify({"error": "Unrecognized command"}), 400
+
+    db.session.add(VoiceCommandLog(user_id=user_id, command=command))
+    db.session.commit()
+    return jsonify({"message": "Voice command processed", "actionExecuted": action}), 200
+
+
+# ======================================================
+# 6️⃣  User Settings & Preferences
+# ======================================================
+
+@app.route('/api/settings/preferences', methods=['GET'])
+@jwt_required()
+def get_preferences():
+    """Get user preferences"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    return jsonify({
+        "theme": user.theme or "light",
+        "language": user.language or "English",
+        "camera_access_enabled": user.camera_access_enabled if user.camera_access_enabled is not None else True,
+        "notifications_enabled": user.notifications_enabled if user.notifications_enabled is not None else True,
+        "add_to_home_enabled": user.add_to_home_enabled if user.add_to_home_enabled is not None else False
+    }), 200
+
+
+@app.route('/api/settings/preferences', methods=['PUT'])
+@jwt_required()
+def update_preferences():
+    """Update user preferences"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    data = request.get_json()
+    
+    if 'theme' in data:
+        if data['theme'] in ['light', 'dark']:
+            user.theme = data['theme']
+        else:
+            return jsonify({"error": "Invalid theme. Must be 'light' or 'dark'"}), 400
+    
+    if 'language' in data:
+        user.language = data['language']
+    
+    if 'camera_access_enabled' in data:
+        user.camera_access_enabled = bool(data['camera_access_enabled'])
+    
+    if 'notifications_enabled' in data:
+        user.notifications_enabled = bool(data['notifications_enabled'])
+    
+    if 'add_to_home_enabled' in data:
+        user.add_to_home_enabled = bool(data['add_to_home_enabled'])
+    
+    try:
+        db.session.commit()
+        return jsonify({"message": "Preferences updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update preferences", "details": str(e)}), 500
+
+
+@app.route('/api/settings/password', methods=['PUT'])
+@jwt_required()
+def change_password():
+    """Change user password"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    data = request.get_json()
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    
+    if not current_password or not new_password:
+        return jsonify({"error": "Current password and new password required"}), 400
+    
+    if len(new_password) < 6:
+        return jsonify({"error": "New password must be at least 6 characters"}), 400
+    
+    # Verify current password
+    if not check_password_hash(user.password, current_password):
+        return jsonify({"error": "Current password is incorrect"}), 401
+    
+    # Update password
+    user.password = generate_password_hash(new_password)
+    
+    try:
+        db.session.commit()
+        return jsonify({"message": "Password changed successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to change password", "details": str(e)}), 500
+
+
+@app.route('/api/settings/history/clear', methods=['DELETE'])
+@jwt_required()
+def clear_listening_history():
+    """Clear user's listening history"""
+    user_id = get_jwt_identity()
+    
+    try:
+        # Delete all song history for the user
+        SongHistory.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+        return jsonify({"message": "Listening history cleared successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to clear history", "details": str(e)}), 500
+
+
+@app.route('/api/settings/account/delete', methods=['DELETE'])
+@jwt_required()
+def delete_account():
+    """Delete user account and all associated data"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    try:
+        # Delete all associated data
+        EmotionLog.query.filter_by(user_id=user_id).delete()
+        VoiceCommandLog.query.filter_by(user_id=user_id).delete()
+        GestureLog.query.filter_by(user_id=user_id).delete()
+        LikedSong.query.filter_by(user_id=user_id).delete()
+        SongHistory.query.filter_by(user_id=user_id).delete()
+        
+        # Delete user playlists and their songs
+        playlists = Playlist.query.filter_by(user_id=user_id).all()
+        for playlist in playlists:
+            PlaylistSong.query.filter_by(playlist_id=playlist.id).delete()
+        Playlist.query.filter_by(user_id=user_id).delete()
+        
+        # Finally, delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({"message": "Account deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete account", "details": str(e)}), 500
+
+
+@app.route('/api/settings/spotify/unlink', methods=['DELETE'])
+@jwt_required()
+def unlink_spotify():
+    """Unlink Spotify account from user"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    try:
+        # Clear Spotify-related fields
+        user.spotify_id = None
+        user.spotify_display_name = None
+        user.spotify_email = None
+        user.spotify_access_token = None
+        user.spotify_refresh_token = None
+        
+        db.session.commit()
+        return jsonify({"message": "Spotify account unlinked successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to unlink Spotify account", "details": str(e)}), 500
+
+
+@app.route('/api/settings/google/unlink', methods=['DELETE'])
+@jwt_required()
+def unlink_google():
+    """Unlink Google account from user"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    try:
+        # Clear Google-related fields
+        user.google_id = None
+        user.google_email = None
+        user.google_name = None
+        user.google_access_token = None
+        user.google_refresh_token = None
+        
+        db.session.commit()
+        return jsonify({"message": "Google account unlinked successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to unlink Google account", "details": str(e)}), 500
+
+
+@app.route('/api/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """Get user profile information"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "username": user.username,
+        "phone_number": user.phone_number,
+        "bio": user.bio,
+        "profile_picture_url": user.profile_picture_url,
+        "spotifyLinked": bool(user.spotify_access_token),
+        "spotifyUser": {
+            "id": user.spotify_id,
+            "name": user.spotify_display_name,
+            "email": user.spotify_email
+        } if user.spotify_access_token else None,
+        "googleLinked": bool(user.google_id),
+        "googleUser": {
+            "id": user.google_id,
+            "name": user.google_name,
+            "email": user.google_email
+        } if user.google_id else None
+    }), 200
+
+
+@app.route('/api/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile information"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    data = request.get_json()
+    
+    if 'first_name' in data:
+        user.first_name = data['first_name']
+    
+    if 'username' in data:
+        # Skip check if username hasn't changed
+        if user.username != data['username']:
+            # Check if username is already taken by another user
+            existing_user = User.query.filter_by(username=data['username']).first()
+            if existing_user and existing_user.id != int(user_id):
+                return jsonify({"error": "Username already taken"}), 409
+        user.username = data['username']
+    
+    if 'phone_number' in data:
+        user.phone_number = data['phone_number']
+    
+    if 'bio' in data:
+        user.bio = data['bio']
+    
+    try:
+        db.session.commit()
+        return jsonify({"message": "Profile updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update profile", "details": str(e)}), 500
+
+
+@app.route('/api/profile/picture', methods=['POST'])
+@jwt_required()
+def upload_profile_picture():
+    """Upload profile picture (base64 encoded)"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    data = request.get_json()
+    image_data = data.get("image")
+    
+    if not image_data:
+        return jsonify({"error": "Image data required"}), 400
+    
+    # Store the base64 image data URL directly
+    # In production, you might want to upload to S3 or similar and store the URL
+    user.profile_picture_url = image_data
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "message": "Profile picture uploaded successfully",
+            "profile_picture_url": user.profile_picture_url
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to upload profile picture", "details": str(e)}), 500
+
+
+# ======================================================
+# 6️⃣  Global Error Handlers
+# ======================================================
+@app.errorhandler(Exception)
+def handle_500(e):
+    return jsonify({"error": "Internal Server Error", "message": str(e)}), 500
+
+
+# ======================================================
+# 7️⃣  Init DB
+# ======================================================
+with app.app_context():
+    db.create_all()
+    print("✅ Database initialized successfully!")
+
+if __name__ == '__main__':
+    print(f"------------ CONFIG DEBUG ------------")
+    print(f"Loaded SPOTIFY_CLIENT_ID: {app.config['SPOTIFY_CLIENT_ID']}")
+    print(f"Loaded SPOTIFY_REDIRECT_URI: '{app.config['SPOTIFY_REDIRECT_URI']}'")
+    print(f"--------------------------------------")
+    app.run(debug=True)
