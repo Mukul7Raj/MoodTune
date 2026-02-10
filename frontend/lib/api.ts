@@ -1,5 +1,6 @@
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+console.log('🚀 [API] Configured API_BASE_URL:', API_BASE_URL);
 
 // Helper function to get auth token from localStorage
 const getAuthToken = (): string | null => {
@@ -74,6 +75,14 @@ export const authAPI = {
       localStorage.setItem('auth_token', data.token);
     }
     return data;
+  },
+
+  getGoogleLoginUrl: async () => {
+    const response = await apiRequest('/api/google/login');
+    if (!response.ok) {
+      throw new Error('Failed to get Google login URL');
+    }
+    return response.json();
   },
 
   logout: () => {
@@ -168,7 +177,7 @@ export const musicAPI = {
     if (wellbeing !== undefined) params.append('wellbeing', wellbeing.toString());
 
     const response = await apiRequest(`/api/recommendations?${params.toString()}`);
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to fetch recommendations');
@@ -183,7 +192,7 @@ export const musicAPI = {
     params.append('type', type);
 
     const response = await apiRequest(`/api/search?${params.toString()}`);
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Search failed');
